@@ -8,6 +8,7 @@ import requests
 from pathlib import Path
 from typing import Dict, Optional, List
 from nacl.public import PublicKey
+from nacl.signing import VerifyKey
 from nacl.encoding import Base64Encoder
 
 from identity import Identity
@@ -31,7 +32,9 @@ class Peer:
         self.port = port
         self.public_key_b64 = public_key_b64
         self.display_name = display_name
-        self.public_key = PublicKey(base64.b64decode(public_key_b64))
+        # Convert Ed25519 public key to Curve25519 for encryption
+        ed25519_verify_key = VerifyKey(base64.b64decode(public_key_b64))
+        self.public_key = ed25519_verify_key.to_curve25519_public_key()
         self.socks_proxy = socks_proxy or {
             'http': 'socks5h://127.0.0.1:9050',
             'https': 'socks5h://127.0.0.1:9050'

@@ -187,15 +187,12 @@ class P2PAgent:
             # Don't return - try to decrypt first, then auto-add if it's a handshake
         
         # Decrypt
-        from nacl.public import PrivateKey
         from nacl.signing import VerifyKey
         import base64
         
-        # We need the private key for decryption - derive from signing key
-        # This is a simplification - in practice you'd have a separate encryption keypair
-        signing_key_bytes = bytes(self.identity.signing_key)
-        # Use first 32 bytes as seed for encryption key
-        encryption_private = PrivateKey(signing_key_bytes[:32])
+        # Convert Ed25519 signing key to Curve25519 private key for encryption
+        # This is the proper way to derive encryption keys from signing keys
+        encryption_private = self.identity.signing_key.to_curve25519_private_key()
         
         sender_verify_key = VerifyKey(base64.b64decode(sender_pubkey_b64))
         
