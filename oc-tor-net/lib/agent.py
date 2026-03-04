@@ -45,6 +45,7 @@ class P2PAgent:
         print("Loading identity...")
         self.identity = Identity(str(self.config_dir))
         print(f"  Address: {self.identity.get_address()}")
+        print(f"  Encryption pubkey: {self.identity.get_encryption_pubkey_b64()[:40]}...")
         
         # 2. Start message server (local HTTP endpoint)
         print(f"Starting message server on port {self.service_port}...")
@@ -170,6 +171,8 @@ class P2PAgent:
     def _on_message_received(self, encrypted_message: dict):
         """Callback when a message is received"""
         print(f"\n[Received encrypted message]")
+        print(f"  [DEBUG] Message keys: {list(encrypted_message.keys())}")
+        print(f"  [DEBUG] Has sender_pubkey: {'sender_pubkey' in encrypted_message}")
         
         # Get sender's public key from message
         sender_pubkey_b64 = encrypted_message.get('sender_pubkey')

@@ -39,14 +39,18 @@ class MessageHandler(BaseHTTPRequestHandler):
             
             try:
                 message = json.loads(body)
+                print(f"[DEBUG] Server received message: {list(message.keys())}")
                 
                 # Store in inbox
                 if MessageHandler.inbox_dir:
                     self._store_message(message)
+                    print(f"[DEBUG] Message stored to inbox")
                 
                 # Notify callback
                 if MessageHandler.message_callback:
+                    print(f"[DEBUG] Calling message callback...")
                     MessageHandler.message_callback(message)
+                    print(f"[DEBUG] Callback completed")
                 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')

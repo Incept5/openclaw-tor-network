@@ -34,9 +34,13 @@ def main():
         agent.start()
         print("\nAgent is running. Press Ctrl+C to stop.\n")
         
-        # Keep running
+        # Keep running with periodic status
+        counter = 0
         while True:
             time.sleep(1)
+            counter += 1
+            if counter % 60 == 0:  # Every 60 seconds
+                print(f"[DEBUG] Daemon alive - {counter} seconds uptime")
             
     except Exception as e:
         print(f"Error: {e}")
