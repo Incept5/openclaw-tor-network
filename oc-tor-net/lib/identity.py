@@ -143,33 +143,19 @@ class Identity:
     def decode_invite(invite_str: str) -> dict:
         """Decode compact invite string"""
         parts = invite_str.split(';')
-        # Support both old format (5 parts) and new format (6 parts with name)
-        if len(parts) == 5:
-            # Old format without name
-            version = parts[0].split(':')[1]
-            return {
-                'v': int(version),
-                'pubkey': parts[1],
-                'onion': parts[2].rsplit(':', 1)[0],
-                'port': int(parts[2].rsplit(':', 1)[1]),
-                'name': 'Anonymous Agent',
-                'ts': parts[3],
-                'sig': parts[4]
-            }
-        elif len(parts) == 6:
-            # New format with name
-            version = parts[0].split(':')[1]
-            return {
-                'v': int(version),
-                'pubkey': parts[1],
-                'onion': parts[2].rsplit(':', 1)[0],
-                'port': int(parts[2].rsplit(':', 1)[1]),
-                'name': parts[3],
-                'ts': parts[4],
-                'sig': parts[5]
-            }
-        else:
-            raise ValueError(f"Invalid invite format: expected 5 or 6 parts, got {len(parts)}")
+        if len(parts) != 6:
+            raise ValueError(f"Invalid invite format: expected 6 parts, got {len(parts)}")
+        
+        version = parts[0].split(':')[1]
+        return {
+            'v': int(version),
+            'pubkey': parts[1],
+            'onion': parts[2].rsplit(':', 1)[0],
+            'port': int(parts[2].rsplit(':', 1)[1]),
+            'name': parts[3],
+            'ts': parts[4],
+            'sig': parts[5]
+        }
     
     @staticmethod
     def verify_invite(invite: dict) -> bool:
