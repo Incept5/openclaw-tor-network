@@ -18,7 +18,7 @@
             padding: 2rem;
         }
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
         }
         h1 {
@@ -75,24 +75,150 @@
             color: #7ee787;
             margin-top: 0;
         }
-        .diagram {
+        
+        /* CSS-based flow diagram */
+        .flow-diagram {
             background: #161b22;
             border: 1px solid #30363d;
             border-radius: 8px;
-            padding: 1.5rem;
+            padding: 2rem;
             margin: 1rem 0;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 0.75rem;
-            overflow-x: auto;
-            white-space: pre;
-            line-height: 1.4;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
         }
-        .missy { color: #ff7b72; }
-        .jaka { color: #79c0ff; }
-        .action { color: #8b949e; }
-        .arrow { color: #e3b341; }
-        .data { color: #d2a8ff; }
-        .result { color: #7ee787; }
+        
+        .flow-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            min-height: 80px;
+        }
+        
+        .flow-row.single {
+            justify-content: center;
+        }
+        
+        .actor {
+            width: 180px;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            z-index: 2;
+        }
+        
+        .actor.missy {
+            background: #ff7b7220;
+            border: 2px solid #ff7b72;
+            color: #ff7b72;
+        }
+        
+        .actor.jaka {
+            background: #79c0ff20;
+            border: 2px solid #79c0ff;
+            color: #79c0ff;
+        }
+        
+        .actor.system {
+            background: #d2a8ff20;
+            border: 2px solid #d2a8ff;
+            color: #d2a8ff;
+            width: 220px;
+        }
+        
+        .arrow-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            padding: 0.5rem 0;
+        }
+        
+        .arrow-line {
+            width: 100%;
+            height: 2px;
+            background: #8b949e;
+            position: relative;
+        }
+        
+        .arrow-line.right::after {
+            content: '▶';
+            position: absolute;
+            right: -5px;
+            top: -7px;
+            color: #8b949e;
+            font-size: 12px;
+        }
+        
+        .arrow-line.left::after {
+            content: '◀';
+            position: absolute;
+            left: -5px;
+            top: -7px;
+            color: #8b949e;
+            font-size: 12px;
+        }
+        
+        .arrow-label {
+            background: #0d1117;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: #8b949e;
+            margin-top: 0.25rem;
+            border: 1px solid #30363d;
+            max-width: 200px;
+            text-align: center;
+        }
+        
+        .arrow-label.data {
+            color: #d2a8ff;
+            border-color: #d2a8ff;
+        }
+        
+        .arrow-label.action {
+            color: #e3b341;
+            border-color: #e3b341;
+        }
+        
+        .step-box {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            margin: 0.5rem 0;
+            font-size: 0.85rem;
+        }
+        
+        .step-box .label {
+            color: #8b949e;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            margin-bottom: 0.25rem;
+        }
+        
+        .step-box .content {
+            color: #c9d1d9;
+        }
+        
+        .step-box .content code {
+            background: #21262d;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            font-family: monospace;
+            color: #79c0ff;
+        }
+        
+        .vertical-connector {
+            width: 2px;
+            height: 30px;
+            background: #8b949e;
+            margin: 0 auto;
+        }
+        
         .step {
             display: flex;
             align-items: flex-start;
@@ -103,6 +229,7 @@
             border-radius: 6px;
             border-left: 3px solid #58a6ff;
         }
+        
         .step-num {
             background: #58a6ff;
             color: #0d1117;
@@ -116,17 +243,21 @@
             font-size: 0.9rem;
             flex-shrink: 0;
         }
+        
         .step-content {
             flex: 1;
         }
+        
         .step-content h4 {
             margin-top: 0;
             color: #c9d1d9;
         }
+        
         .step-content p {
             color: #8b949e;
             margin: 0.5rem 0;
         }
+        
         .code-block {
             background: #0d1117;
             border: 1px solid #30363d;
@@ -137,14 +268,17 @@
             overflow-x: auto;
             margin: 0.5rem 0;
         }
+        
         .code-block .comment { color: #8b949e; }
         .code-block .cmd { color: #79c0ff; }
         .code-block .arg { color: #d2a8ff; }
+        
         .comparison {
             width: 100%;
             border-collapse: collapse;
             margin: 1rem 0;
         }
+        
         .comparison th {
             text-align: left;
             padding: 0.75rem;
@@ -152,13 +286,16 @@
             border-bottom: 2px solid #30363d;
             color: #79c0ff;
         }
+        
         .comparison td {
             padding: 0.75rem;
             border-bottom: 1px solid #21262d;
         }
+        
         .comparison tr:hover {
             background: #161b22;
         }
+        
         .note {
             background: #bb800926;
             border-left: 3px solid #bb8009;
@@ -166,8 +303,22 @@
             margin: 1rem 0;
             border-radius: 0 6px 6px 0;
         }
+        
         .note strong {
             color: #d29922;
+        }
+        
+        .result-box {
+            background: #23863620;
+            border: 1px solid #238636;
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1rem 0;
+            text-align: center;
+        }
+        
+        .result-box strong {
+            color: #7ee787;
         }
     </style>
 </head>
@@ -176,6 +327,7 @@
         <h1>🔒 OpenClaw P2P Network</h1>
         <p class="subtitle">Use Cases: Pairing and Q&A Message Flows</p>
 
+        <!-- USE CASE 1: PAIRING -->
         <div class="usecase-header">
             <h2>Use Case 1: Pairing (First Contact)</h2>
             <p class="goal">Goal: Jaka and Missy become buddies so they can message each other</p>
@@ -191,59 +343,112 @@
         </div>
 
         <h3>Flow Diagram</h3>
-        <div class="diagram">
-<span class="missy">┌─────────────────┐</span>                              <span class="jaka">┌─────────────────┐</span>
-<span class="missy">│  Missy (You)    │</span>                              <span class="jaka">│  Jaka (Friend)  │</span>
-<span class="missy">│ "Share my       │</span>                              <span class="jaka">│                 │</span>
-<span class="missy">│  invite"        │</span>                              <span class="jaka">│                 │</span>
-<span class="missy">└────────┬────────┘</span>                              <span class="jaka">└─────────────────┘</span>
-         │
-         ▼
-<span class="missy">┌─────────────────┐</span>
-<span class="missy">│ oc-tor-net-     │</span>
-<span class="missy">│ invite.py       │</span>
-<span class="missy">└────────┬────────┘</span>
-         │
-         ▼
-<span class="missy">┌─────────────────┐</span>
-<span class="missy">│ Invite + QR     │</span>
-<span class="missy">│ oc:v1;pubkey;   │</span>
-<span class="missy">│ onion;ts;sig    │</span>
-<span class="missy">└────────┬────────┘</span>
-         │
-         │ <span class="action">Send via any channel</span>
-         ▼
-<span class="missy">┌─────────────────┐</span>                              <span class="jaka">┌─────────────────┐</span>
-<span class="missy">│                 │</span>                              <span class="jaka">│ Receives invite │</span>
-<span class="missy">│                 │</span>                              <span class="jaka">└────────┬────────┘</span>
-<span class="missy">│                 │</span>                                       │
-<span class="missy">│                 │</span>                                       ▼
-<span class="missy">│                 │</span>                              <span class="jaka">┌─────────────────┐</span>
-<span class="missy">│                 │</span>                              <span class="jaka">│ oc-tor-net-     │</span>
-<span class="missy">│                 │</span>                              <span class="jaka">│ connect.py      │</span>
-<span class="missy">│                 │</span>                              <span class="jaka">└────────┬────────┘</span>
-<span class="missy">│                 │</span>                                       │
-<span class="missy">│                 │</span>                                       ▼
-<span class="missy">│                 │</span>                              <span class="jaka">┌─────────────────┐</span>
-<span class="missy">│                 │</span>                              <span class="jaka">│ Verify: decode, │</span>
-<span class="missy">│                 │</span>                              <span class="jaka">│ check format,   │</span>
-<span class="missy">│                 │</span>                              <span class="jaka">│ verify signature│</span>
-<span class="missy">│                 │</span>                              <span class="jaka">└────────┬────────┘</span>
-<span class="missy">│                 │</span>                                       │
-<span class="missy">│                 │</span>                                       ▼
-<span class="missy">│                 │</span>                              <span class="jaka">┌─────────────────┐</span>
-<span class="missy">│                 │</span>                              <span class="jaka">│ Add to peers    │</span>
-<span class="missy">│                 │</span>                              <span class="jaka">│ (peers.json)    │</span>
-<span class="missy">│                 │</span>                              <span class="jaka">└────────┬────────┘</span>
-<span class="missy">│                 │</span>                                       │
-<span class="missy">│                 │</span>                    <span class="arrow">Handshake</span>        │
-<span class="missy">│◄──────────────────────────────────────────────────────┘</span>
-                 ▼
-<span class="missy">┌─────────────────┐</span>
-<span class="missy">│ Receive         │</span>
-<span class="missy">│ handshake       │</span>
-<span class="missy">│ (add to peers)  │</span>
-<span class="missy">└─────────────────┘</span></div>
+
+        <div class="flow-diagram">
+            <!-- Step 1: Missy generates invite -->
+            <div class="flow-row single">
+                <div class="actor missy">
+                    <div>👤 Missy</div>
+                    <div style="font-size: 0.8rem; font-weight: normal; margin-top: 0.5rem;">"Share my invite with jaka"</div>
+                </div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <div class="step-box">
+                <div class="label">Action</div>
+                <div class="content">Run <code>oc-tor-net-invite.py</code> to generate invite code + QR</div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <!-- Step 2: Share invite -->
+            <div class="flow-row">
+                <div class="actor missy">👤 Missy</div>
+                <div class="arrow-container">
+                    <div class="arrow-line right"></div>
+                    <div class="arrow-label action">Send invite via any channel</div>
+                </div>
+                <div class="actor jaka">👤 Jaka</div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <div class="step-box">
+                <div class="label">Data</div>
+                <div class="content"><code>oc:v1;pubkey;onion:80;timestamp;signature</code></div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <!-- Step 3: Jaka accepts -->
+            <div class="flow-row single">
+                <div class="actor jaka">
+                    <div>👤 Jaka</div>
+                    <div style="font-size: 0.8rem; font-weight: normal; margin-top: 0.5rem;">Receives invite</div>
+                </div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <div class="step-box">
+                <div class="label">Action</div>
+                <div class="content">Run <code>oc-tor-net-connect.py '&lt;invite&gt;'</code></div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <!-- Step 4: Verification -->
+            <div class="flow-row single">
+                <div class="actor system">
+                    <div>🔐 Verification</div>
+                    <div style="font-size: 0.75rem; font-weight: normal; margin-top: 0.5rem;">
+                        1. Decode invite<br>
+                        2. Check format<br>
+                        3. Verify signature
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <!-- Step 5: Add to peers -->
+            <div class="flow-row single">
+                <div class="actor system">
+                    <div>💾 Store</div>
+                    <div style="font-size: 0.75rem; font-weight: normal; margin-top: 0.5rem;">
+                        Add to <code>peers.json</code>:<br>
+                        @missy... → {onion, pubkey}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <!-- Step 6: Handshake -->
+            <div class="flow-row">
+                <div class="actor jaka">👤 Jaka</div>
+                <div class="arrow-container">
+                    <div class="arrow-line right"></div>
+                    <div class="arrow-label data">Encrypted handshake via Tor</div>
+                </div>
+                <div class="actor missy">👤 Missy</div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <!-- Step 7: Missy receives -->
+            <div class="flow-row single">
+                <div class="actor missy">
+                    <div>👤 Missy</div>
+                    <div style="font-size: 0.8rem; font-weight: normal; margin-top: 0.5rem;">Receives handshake<br>(may add jaka to peers)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="result-box">
+            <strong>Result:</strong> They are now buddies and can message anytime
+        </div>
 
         <h3>Step-by-Step</h3>
 
@@ -296,7 +501,7 @@
             <div class="step-num">6</div>
             <div class="step-content">
                 <h4>Handshake</h4>
-                <p>Encrypted handshake sent to missy's .onion</p>
+                <p>Encrypted handshake sent to missy's .onion address</p>
             </div>
         </div>
 
@@ -308,10 +513,7 @@
             </div>
         </div>
 
-        <div class="note">
-            <strong>Result:</strong> They are now buddies and can message anytime.
-        </div>
-
+        <!-- USE CASE 2: Q&A -->
         <div class="usecase-header">
             <h2>Use Case 2: Q&A (After Pairing)</h2>
             <p class="goal">Goal: Missy asks jaka a question and gets a reply</p>
@@ -326,71 +528,167 @@
         </div>
 
         <h3>Flow Diagram</h3>
-        <div class="diagram">
-<span class="missy">┌─────────────────┐</span>                              <span class="jaka">┌─────────────────┐</span>
-<span class="missy">│ "Ask jaka when  │</span>                              <span class="jaka">│                 │</span>
-<span class="missy">│  he's free"     │</span>                              <span class="jaka">│                 │</span>
-<span class="missy">└────────┬────────┘</span>                              <span class="jaka">└─────────────────┘</span>
-         │
-         ▼
-<span class="missy">┌─────────────────┐</span>
-<span class="missy">│ Missy's Agent   │</span>
-<span class="missy">│ 1. Look up jaka │</span>
-<span class="missy">│ 2. Create query │</span>
-<span class="missy">│    thread:abc123│</span>
-<span class="missy">│ 3. oc-tor-net-  │</span>
-<span class="missy">│    send.py      │</span>
-<span class="missy">└────────┬────────┘</span>
-         │
-         ▼
-<span class="missy">┌─────────────────┐</span>
-<span class="missy">│ P2P Daemon      │</span>
-<span class="missy">│ Encrypt with    │</span>
-<span class="missy">│ jaka's pubkey   │</span>
-<span class="missy">└────────┬────────┘</span>
-         │ <span class="arrow">Tor network</span>
-         ▼
-<span class="jaka">┌─────────────────┐</span>
-<span class="jaka">│ Jaka's P2P      │</span>
-<span class="jaka">│ 1. Receive      │</span>
-<span class="jaka">│ 2. Decrypt      │</span>
-<span class="jaka">│ 3. Verify sig   │</span>
-<span class="jaka">│ 4. Store inbox  │</span>
-<span class="jaka">│ 5. WEBHOOK      │</span>
-<span class="jaka">└────────┬────────┘</span>
-         │
-         ▼
-<span class="jaka">┌─────────────────┐</span>
-<span class="jaka">│ Jaka's Agent    │</span>
-<span class="jaka">│ 1. Poll finds   │</span>
-<span class="jaka">│    notification │</span>
-<span class="jaka">│ 2. Ask user:    │</span>
-<span class="jaka">│    "Missy asks  │</span>
-<span class="jaka">│     when free"  │</span>
-<span class="jaka">└────────┬────────┘</span>
-         │
-<span class="missy">│        │</span> <span class="result">"Thursday"</span>
-<span class="missy">│        ▼</span>
-<span class="missy">│       </span><span class="jaka">┌─────────────────┐</span>
-<span class="missy">│       </span><span class="jaka">│ Create response │</span>
-<span class="missy">│       </span><span class="jaka">│ thread:abc123   │</span>
-<span class="missy">│       </span><span class="jaka">└────────┬────────┘</span>
-<span class="missy">│        │</span> <span class="arrow">Reply via Tor</span>
-<span class="missy">│◄───────┘</span>
-<span class="missy">▼</span>
-<span class="missy">┌─────────────────┐</span>
-<span class="missy">│ Missy's P2P     │</span>
-<span class="missy">│ Decrypt, notify │</span>
-<span class="missy">└────────┬────────┘</span>
-         │
-         ▼
-<span class="missy">┌─────────────────┐</span>
-<span class="missy">│ Missy's Agent   │</span>
-<span class="missy">│ "Jaka is free   │</span>
-<span class="missy">│  Thursday"      │</span>
-<span class="missy">└────────┬────────┘</span>
-         │
-    <span class="result">"Confirm 7pm"</span></div>
+
+        <div class="flow-diagram">
+            <!-- Step 1: Missy asks -->
+            <div class="flow-row single">
+                <div class="actor missy">
+                    <div>👤 Missy</div>
+                    <div style="font-size: 0.8rem; font-weight: normal; margin-top: 0.5rem;">"Ask jaka when he's free for dinner"</div>
+                </div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <!-- Step 2: Create query -->
+            <div class="flow-row single">
+                <div class="actor system">
+                    <div>🤖 Missy's Agent</div>
+                    <div style="font-size: 0.75rem; font-weight: normal; margin-top: 0.5rem;">
+                        1. Look up jaka in peers<br>
+                        2. Create query with thread ID<br>
+                        3. Call oc-tor-net-send.py
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <div class="step-box">
+                <div class="label">Query</div>
+                <div class="content">
+                    <code>{type: "query", content: {query_type: "availability", params: {...}}, thread: "abc123"}</code>
+                </div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <!-- Step 3: Encrypt and send -->
+            <div class="flow-row single">
+                <div class="actor system">
+                    <div>🔐 P2P Daemon</div>
+                    <div style="font-size: 0.75rem; font-weight: normal; margin-top: 0.5rem;">
+                        Encrypt with jaka's public key<br>
+                        Send via Tor SOCKS proxy
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <!-- Step 4: Network transmission -->
+            <div class="flow-row">
+                <div class="actor missy" style="opacity: 0.5;">👤 Missy</div>
+                <div class="arrow-container">
+                    <div class="arrow-line right"></div>
+                    <div class="arrow-label data">Encrypted via Tor network</div>
+                </div>
+                <div class="actor jaka" style="opacity: 0.5;">👤 Jaka</div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <!-- Step 5: Jaka receives -->
+            <div class="flow-row single">
+                <div class="actor system">
+                    <div>📥 Jaka's P2P Daemon</div>
+                    <div style="font-size: 0.75rem; font-weight: normal; margin-top: 0.5rem;">
+                        1. Receive on .onion<br>
+                        2. Decrypt with private key<br>
+                        3. Verify missy's signature<br>
+                        4. Store in inbox<br>
+                        5. WEBHOOK notify OpenClaw
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <!-- Step 6: Jaka's agent processes -->
+            <div class="flow-row single">
+                <div class="actor system">
+                    <div>🤖 Jaka's Agent</div>
+                    <div style="font-size: 0.75rem; font-weight: normal; margin-top: 0.5rem;">
+                        Poll finds notification<br>
+                        Present to user:<br>
+                        <em>"Missy asks when you're free for dinner"</em>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <!-- Step 7: Jaka responds -->
+            <div class="flow-row">
+                <div class="actor jaka">👤 Jaka</div>
+                <div class="arrow-container">
+                    <div class="arrow-line left"></div>
+                    <div class="arrow-label action">"Thursday"</div>
+                </div>
+                <div class="actor missy">👤 Missy</div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <!-- Step 8: Create response -->
+            <div class="flow-row single">
+                <div class="actor system">
+                    <div>✍️ Create Response</div>
+                    <div style="font-size: 0.75rem; font-weight: normal; margin-top: 0.5rem;">
+                        Same thread ID: "abc123"<br>
+                        <code>{type: "response", content: {result: {available: ["Thursday"]}}, thread: "abc123"}</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <!-- Step 9: Send response -->
+            <div class="flow-row">
+                <div class="actor jaka" style="opacity: 0.5;">👤 Jaka</div>
+                <div class="arrow-container">
+                    <div class="arrow-line left"></div>
+                    <div class="arrow-label data">Encrypted reply via Tor</div>
+                </div>
+                <div class="actor missy" style="opacity: 0.5;">👤 Missy</div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <!-- Step 10: Missy receives -->
+            <div class="flow-row single">
+                <div class="actor system">
+                    <div>📥 Missy's P2P Daemon</div>
+                    <div style="font-size: 0.75rem; font-weight: normal; margin-top: 0.5rem;">
+                        Decrypt → Webhook notify
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <!-- Step 11: Missy's agent presents -->
+            <div class="flow-row single">
+                <div class="actor system">
+                    <div>🤖 Missy's Agent</div>
+                    <div style="font-size: 0.75rem; font-weight: normal; margin-top: 0.5rem;">
+                        Poll finds response<br>
+                        Present to user:<br>
+                        <em>"Jaka is free Thursday"</em>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vertical-connector"></div>
+            
+            <!-- Step 12: Missy confirms -->
+            <div class="flow-row single">
+                <div class="actor missy">
+                    <div>👤 Missy</div>
+                    <div style="font-size: 0.8rem; font-weight: normal; margin-top: 0.5rem;">"Confirm 7pm"</div>
+                </div>
+            </div>
+        </div>
 
         <h3>Key Differences</h3>
         <table class="comparison">
