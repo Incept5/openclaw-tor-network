@@ -1,0 +1,31 @@
+[Unit]
+Description=OpenClaw P2P Agent (oc-tor-net)
+After=network.target tor.service
+Wants=tor.service
+
+[Service]
+Type=simple
+User=%I
+WorkingDirectory=/home/%I/openclaw-tor-network/oc-tor-net/tools
+Environment=PYTHONUNBUFFERED=1
+Environment=HOME=/home/%I
+
+# Start the agent
+ExecStart=/usr/bin/python3 oc-tor-net-start.py
+
+# Restart on failure
+Restart=on-failure
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=oc-tor-net
+
+# Security
+NoNewPrivileges=false
+ProtectSystem=no
+ProtectHome=no
+
+[Install]
+WantedBy=multi-user.target
