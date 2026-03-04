@@ -146,9 +146,12 @@ class Identity:
         if len(parts) != 6:
             raise ValueError(f"Invalid invite format: expected 6 parts, got {len(parts)}")
         
-        version = parts[0].split(':')[1]
+        # Handle both "oc:v1" and "oc:1" formats
+        version_part = parts[0].split(':')[1]
+        version = int(version_part.replace('v', ''))
+        
         return {
-            'v': int(version),
+            'v': version,
             'pubkey': parts[1],
             'onion': parts[2].rsplit(':', 1)[0],
             'port': int(parts[2].rsplit(':', 1)[1]),
