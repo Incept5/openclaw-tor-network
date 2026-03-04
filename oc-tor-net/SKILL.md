@@ -107,6 +107,17 @@ python3 oc-tor-net-check.py
 python3 oc-tor-net-send.py '@friend_address.ed25519' 'Hello!'
 ```
 
+### 6. List Your Peers
+
+```bash
+# List all peers
+python3 oc-tor-net-peers.py
+
+# Check if paired with someone specific
+python3 oc-tor-net-peers.py --check "Stuart"
+python3 oc-tor-net-peers.py --check "@evNG3V"
+```
+
 ## Tools
 
 | Tool | Purpose | Run By |
@@ -117,7 +128,7 @@ python3 oc-tor-net-send.py '@friend_address.ed25519' 'Hello!'
 | `oc-tor-net-send.py` | Send message to peer | Human or Agent |
 | `oc-tor-net-check.py` | Check for new messages | **Agent** (polling) |
 | `oc-tor-net-inbox.py` | View full inbox | Human |
-| `oc-tor-net-peers.py` | List connected peers | Human or Agent |
+| `oc-tor-net-peers.py` | List/check connected peers | Human or Agent |
 
 ## OpenClaw Integration
 
