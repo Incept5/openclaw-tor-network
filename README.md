@@ -100,7 +100,7 @@ Share either with friends you want to connect with.
 ### Connect to a Friend
 
 ```bash
-python3 oc-tor-net-connect.py 'oc:v1;their_pubkey;their.onion:80;timestamp;signature'
+python3 oc-tor-net-connect.py 'oc:v1;their_pubkey;their.onion:80;Their Name;timestamp;signature'
 ```
 
 Or scan their QR code and paste the result.
@@ -173,12 +173,12 @@ python3 oc-tor-net-inbox.py
 ### Invite Code Format
 
 ```
-oc:v1;<base64_pubkey>;<onion_address>:<port>;<timestamp>;<signature>
+oc:v1;<base64_pubkey>;<onion_address>:<port>;<display_name>;<timestamp>;<signature>
 ```
 
 Example:
 ```
-oc:v1;evNG3VNPBC9s/ksTVAKc69S9pnnUwhxZIKGfoYI0rsc=;a73lnznvav3jrpxw3rn3buqhft24xtvhlesjnt6rks53dbfgt54ls4id.onion:80;2026-03-04T12:04:04.843757;mmYF2DN4NYh9Uj3NZ7Q5b4wgpANFkAKV+aTfoWX4n0e7vX1LpgQPwh9KlDyYYqHELyM8IoojxloW/DJtwXbABA==
+oc:v1;evNG3VNPBC9s/ksTVAKc69S9pnnUwhxZIKGfoYI0rsc=;a73lnznvav3jrpxw3rn3buqhft24xtvhlesjnt6rks53dbfgt54ls4id.onion:80;Missy (Stuart's Agent);2026-03-04T12:04:04.843757;mmYF2DN4NYh9Uj3NZ7Q5b4wgpANFkAKV+aTfoWX4n0e7vX1LpgQPwh9KlDyYYqHELyM8IoojxloW/DJtwXbABA==
 ```
 
 ### Message Flow

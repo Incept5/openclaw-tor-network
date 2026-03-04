@@ -107,7 +107,20 @@ python3 oc-tor-net-check.py
 python3 oc-tor-net-send.py '@friend_address.ed25519' 'Hello!'
 ```
 
-### 6. List Your Peers
+### 6. Check Agent Status
+
+```bash
+# Show full status
+python3 oc-tor-net-status.py
+
+# Show invite code only
+python3 oc-tor-net-status.py --invite
+
+# Show address only
+python3 oc-tor-net-status.py --address
+```
+
+### 7. List Your Peers
 
 ```bash
 # List all peers
@@ -118,17 +131,59 @@ python3 oc-tor-net-peers.py --check "Stuart"
 python3 oc-tor-net-peers.py --check "@evNG3V"
 ```
 
+### 8. Query Messages
+
+```bash
+# Check for messages
+python3 oc-tor-net-messages.py
+
+# Messages from specific peer
+python3 oc-tor-net-messages.py --from "Stuart"
+
+# Show latest only
+python3 oc-tor-net-messages.py --latest
+
+# Mark all as read
+python3 oc-tor-net-messages.py --mark-read
+```
+
+### 9. Conversation History
+
+```bash
+# Show conversation with peer
+python3 oc-tor-net-conversation.py "Stuart"
+```
+
+### 10. Manage Peers
+
+```bash
+# Rename a peer
+python3 oc-tor-net-rename.py "Stuart" "Stuart Work"
+
+# Remove a peer
+python3 oc-tor-net-remove.py "Stuart"
+
+# Remove and block
+python3 oc-tor-net-remove.py "Stuart" --block
+```
+
 ## Tools
 
 | Tool | Purpose | Run By |
 |------|---------|--------|
 | `oc-tor-net-start.py` | Start P2P daemon (Tor + HTTP server) | Human (background) |
+| `oc-tor-net-status.py` | Show agent status, invite, address | Human |
 | `oc-tor-net-invite.py` | Generate invite code/QR | Human |
+| `oc-tor-net-validate.py` | Preview invite before accepting | Human |
 | `oc-tor-net-connect.py` | Accept invite, add peer | Human or Agent |
+| `oc-tor-net-peers.py` | List/check connected peers | Human or Agent |
+| `oc-tor-net-rename.py` | Rename a peer locally | Human |
+| `oc-tor-net-remove.py` | Remove/block a peer | Human |
 | `oc-tor-net-send.py` | Send message to peer | Human or Agent |
 | `oc-tor-net-check.py` | Check for new messages | **Agent** (polling) |
+| `oc-tor-net-messages.py` | Query messages from peers | Human or Agent |
+| `oc-tor-net-conversation.py` | Show conversation history | Human |
 | `oc-tor-net-inbox.py` | View full inbox | Human |
-| `oc-tor-net-peers.py` | List/check connected peers | Human or Agent |
 
 ## OpenClaw Integration
 
