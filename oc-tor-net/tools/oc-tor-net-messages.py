@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Query and manage P2P messages
+Query and manage P2P messages (decrypts messages using identity key)
 
 Usage:
   oc-tor-net-messages.py                    # Check for new messages
@@ -13,36 +13,81 @@ import json
 from pathlib import Path
 from datetime import datetime
 
+sys.path.insert(0, '../lib')
+sys.path.insert(0, './lib')
 
-def load_messages(inbox_dir, processed=False):
-    """Load messages from inbox or processed folder"""
+try:
+    from identity import Identity
+    from protocol import MessageProtocol
+    from peer import PeerManager
+    from nacl.signing import VerifyKey
+    import base64
+except ImportError as e:
+    print(f"Error loading crypto libs: {e}")
+    sys.exit(1)
+
+
+def load_and_decrypt_messages(inbox_dir, identity, peers_data, show_raw=False):
+    """Load messages from inbox and decrypt them"""
     messages = []
     
     if not inbox_dir.exists():
         return messages
     
-    # Get all JSON files
-    pattern = "*.json"
-    if processed:
-        inbox_dir = inbox_dir / "processed"
-        if not inbox_dir.exists():
-            return messages
+    encryption_private = identity.encryption_key
     
-    for filepath in sorted(inbox_dir.glob(pattern)):
+    for filepath in sorted(inbox_dir.glob("*.json")):
         try:
             with open(filepath) as f:
-                data = json.load(f)
+                encrypted = json.load(f)
             
-            # Extract timestamp from filename if possible
-            ts = filepath.stem.split('_')[0] if '_' in filepath.stem else None
+            # Get sender pubkey from encrypted message
+            sender_pubkey_b64 = encrypted.get('sender_pubkey')
+            if not sender_pubkey_b64:
+                continue
             
-            messages.append({
-                'file': str(filepath),
-                'timestamp': ts or data.get('ts', 'unknown'),
-                'data': data
-            })
+            sender_address = f"@{sender_pubkey_b64}.ed25519"
+            
+            # Get sender's encryption key from peers
+            sender_encryption_key = None
+            if sender_address in peers_data:
+                pubkey_b64 = peers_data[sender_address].get('public_key')
+                if pubkey_b64:
+                    from nacl.public import PublicKey
+                    sender_encryption_key = PublicKey(base64.b64decode(pubkey_b64))
+            
+            # Try to decrypt
+            decrypted = None
+            if sender_encryption_key:
+                sender_verify_key = VerifyKey(base64.b64decode(sender_pubkey_b64))
+                decrypted = MessageProtocol.decrypt_message(
+                    encrypted,
+                    encryption_private,
+                    sender_verify_key
+                )
+            
+            if decrypted:
+                # Extract timestamp from filename if possible
+                ts = filepath.stem.split('_')[0] if '_' in filepath.stem else None
+                
+                messages.append({
+                    'file': str(filepath),
+                    'timestamp': ts or decrypted.get('ts', 'unknown'),
+                    'sender': sender_address,
+                    'data': decrypted
+                })
+            elif show_raw:
+                # Show raw encrypted if can't decrypt
+                messages.append({
+                    'file': str(filepath),
+                    'timestamp': filepath.stem.split('_')[0] if '_' in filepath.stem else 'unknown',
+                    'sender': sender_address,
+                    'data': {'type': 'encrypted', 'content': {'error': 'Cannot decrypt - unknown sender'}},
+                    'encrypted': True
+                })
+                
         except Exception as e:
-            print(f"Error reading {filepath}: {e}", file=sys.stderr)
+            print(f"Error processing {filepath}: {e}", file=sys.stderr)
     
     return messages
 
@@ -74,16 +119,16 @@ def display_messages(messages, peers, show_latest=False):
     
     for i, msg in enumerate(messages, 1):
         data = msg['data']
-        sender = data.get('sender', 'Unknown')
+        sender = msg.get('sender', 'Unknown')
         sender_name = get_peer_name(peers, sender)
         msg_type = data.get('type', 'unknown')
         content = data.get('content', {})
         
         # Format timestamp
         ts = msg.get('timestamp', 'unknown')
-        if ts != 'unknown' and 'T' in ts:
+        if ts != 'unknown' and 'T' in str(ts):
             try:
-                dt = datetime.fromisoformat(ts.replace('Z', '+00:00'))
+                dt = datetime.fromisoformat(str(ts).replace('Z', '+00:00'))
                 ts = dt.strftime('%Y-%m-%d %H:%M')
             except:
                 pass
@@ -107,6 +152,7 @@ def display_messages(messages, peers, show_latest=False):
             print(f"   Response: {json.dumps(result, indent=2)[:200]}")
         elif msg_type == 'handshake':
             print(f"   Handshake from {content.get('display_name', 'Unknown')}")
+            print(f"   Onion: {content.get('onion')}")
         else:
             print(f"   Content: {json.dumps(content, indent=2)[:200]}")
         
@@ -125,7 +171,7 @@ def filter_by_peer(messages, peer_query, peers):
     filtered = []
     
     for msg in messages:
-        sender = msg['data'].get('sender', '')
+        sender = msg.get('sender', '')
         sender_name = get_peer_name(peers, sender).lower()
         
         if query_lower in sender.lower() or query_lower in sender_name:
@@ -155,8 +201,16 @@ def main():
     config_dir = Path.home() / ".openclaw" / "p2p"
     inbox_dir = config_dir / "inbox"
     peers_file = config_dir / "peers.json"
+    identity_file = config_dir / "identity.json"
     
-    # Load peers for name resolution
+    if not identity_file.exists():
+        print("Error: No identity found. Run oc-tor-net-start.py first.")
+        sys.exit(1)
+    
+    # Load identity for decryption
+    identity = Identity(str(config_dir))
+    
+    # Load peers for name resolution and decryption keys
     peers = {}
     if peers_file.exists():
         with open(peers_file) as f:
@@ -168,8 +222,10 @@ def main():
         print(f"Marked {count} message(s) as read.")
         return {'marked_read': count}
     
-    # Load messages
-    messages = load_messages(inbox_dir)
+    show_raw = '--raw' in sys.argv
+    
+    # Load and decrypt messages
+    messages = load_and_decrypt_messages(inbox_dir, identity, peers, show_raw)
     
     # Filter by peer if specified
     if '--from' in sys.argv:
