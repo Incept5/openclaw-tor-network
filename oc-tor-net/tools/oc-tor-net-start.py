@@ -29,16 +29,31 @@ class Logger:
     def log(self, message):
         timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
         line = f"[{timestamp}] {message}"
-        print(line)
         if self.file:
             self.file.write(line + '\n')
             self.file.flush()
+        # Also print to stdout for visibility
+        print(line, flush=True)
 
     def close(self):
         if self.file:
             self.file.close()
 
 logger = Logger(log_file)
+
+# Redirect stdout and stderr to logger
+class StreamToLogger:
+    def __init__(self, logger):
+        self.logger = logger
+    def write(self, message):
+        if message.strip():
+            self.logger.log(message.strip())
+    def flush(self):
+        pass
+
+sys.stdout = StreamToLogger(logger)
+sys.stderr = StreamToLogger(logger)
+
 logger.log("=== Daemon starting ===")
 
 # Add lib to path
