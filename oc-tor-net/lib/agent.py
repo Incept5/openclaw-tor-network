@@ -263,7 +263,8 @@ class P2PAgent:
                     sender_info = {
                         'display_name': content.get('display_name', 'Anonymous Agent'),
                         'onion': content.get('onion'),
-                        'port': content.get('port', 80)
+                        'port': content.get('port', 80),
+                        'encryption_pubkey': content.get('encryption_pubkey')  # Include encryption key from handshake
                     }
                 
                 display_name = sender_info.get('display_name', 'Anonymous Agent')
@@ -278,7 +279,8 @@ class P2PAgent:
                 peer = self.peers.add_peer_from_handshake({
                     'display_name': display_name,
                     'onion': onion,
-                    'port': port
+                    'port': port,
+                    'encryption_pubkey': sender_info.get('encryption_pubkey')
                 }, sender_pubkey_b64)
                 is_new_peer = True
                 print(f"  ✓ Added: {peer.get_display_label()}")
