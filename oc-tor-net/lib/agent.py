@@ -201,6 +201,16 @@ class P2PAgent:
             print(f"  Unknown sender: {sender_address}")
             print("  Will attempt auto-add from handshake content")
         
+        # For unknown peers, check if sender_encryption_pubkey is in outer envelope (handshake)
+        sender_encryption_pubkey_b64 = encrypted_message.get('sender_encryption_pubkey')
+        if not peer and sender_encryption_pubkey_b64:
+            agent_log(f"Found sender_encryption_pubkey in envelope: {sender_encryption_pubkey_b64[:30]}...")
+            # Create temporary peer with this key for decryption
+            from nacl.public import PublicKey
+            temp_peer_key = PublicKey(base64.b64decode(sender_encryption_pubkey_b64))
+        else:
+            temp_peer_key = None
+        
         # Decrypt using separate encryption key
         from nacl.signing import VerifyKey
         import base64
@@ -208,15 +218,29 @@ class P2PAgent:
         encryption_private = self.identity.encryption_key
         sender_verify_key = VerifyKey(base64.b64decode(sender_pubkey_b64))
         
-        print(f"  [DEBUG] Attempting decryption...")
-        print(f"  [DEBUG] My encryption pubkey: {base64.b64encode(bytes(encryption_private.public_key)).decode()[:40]}...")
-        print(f"  [DEBUG] Sender verify key: {sender_pubkey_b64[:40]}...")
+        agent_log("Attempting decryption...")
         
-        decrypted = MessageProtocol.decrypt_message(
-            encrypted_message,
-            encryption_private,
-            sender_verify_key
-        )
+        # Try decryption with temp key first (for handshakes from unknown peers)
+        if temp_peer_key:
+            agent_log("Trying decryption with sender_encryption_pubkey from envelope...")
+            decrypted = MessageProtocol.decrypt_message(
+                encrypted_message,
+                encryption_private,
+                sender_verify_key,
+                recipient_public_key=temp_peer_key  # Use sender's claimed encryption key
+            )
+            if decrypted:
+                agent_log("Decryption SUCCESS with envelope key")
+        else:
+            decrypted = None
+        
+        # If that didn't work, try normal decryption
+        if not decrypted:
+            decrypted = MessageProtocol.decrypt_message(
+                encrypted_message,
+                encryption_private,
+                sender_verify_key
+            )
         
         if not decrypted:
             agent_log("Decryption FAILED - keys don't match")

@@ -17,7 +17,8 @@ class MessageProtocol:
     def encrypt_message(
         message: dict,
         sender_signing_key,  # For signing
-        recipient_public_key: PublicKey
+        recipient_public_key: PublicKey,
+        sender_encryption_pubkey: PublicKey = None  # Optional: for handshakes
     ) -> dict:
         """
         Encrypt a message for a specific recipient.
@@ -39,7 +40,7 @@ class MessageProtocol:
         sign_data = bytes(ephemeral_public) + ciphertext
         signature = sender_signing_key.sign(sign_data).signature
         
-        return {
+        result = {
             'v': 1,
             'ephemeral_pubkey': base64.b64encode(bytes(ephemeral_public)).decode(),
             'ciphertext': base64.b64encode(ciphertext).decode(),
@@ -47,6 +48,12 @@ class MessageProtocol:
             'sender_pubkey': base64.b64encode(bytes(sender_signing_key.verify_key)).decode(),
             'signature': base64.b64encode(signature).decode()
         }
+        
+        # Include sender's encryption pubkey for handshakes (helps recipient decrypt)
+        if sender_encryption_pubkey:
+            result['sender_encryption_pubkey'] = base64.b64encode(bytes(sender_encryption_pubkey)).decode()
+        
+        return result
     
     @staticmethod
     def decrypt_message(

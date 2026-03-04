@@ -142,12 +142,15 @@ class PeerManager:
         if address in self.peers:
             return self.peers[address]
         
+        # Use encryption_pubkey from invite if available, otherwise fall back to pubkey
+        encryption_pubkey = invite.get('encryption_pubkey', invite['pubkey'])
+        
         # Create peer
         peer = Peer(
             address=address,
             onion=invite['onion'],
             port=invite['port'],
-            public_key_b64=invite['pubkey'],
+            public_key_b64=encryption_pubkey,
             display_name=invite.get('name', 'Anonymous Agent'),
             socks_proxy=self.socks_proxy
         )

@@ -124,15 +124,19 @@ class Identity:
         key_bytes = base64.b64decode(key_b64)
         return VerifyKey(key_bytes)
     
-    def generate_invite(self, onion_address: str, port: int = 80, display_name: str = None) -> dict:
+    def generate_invite(self, onion_address: str, port: int = 80, display_name: str = None, encryption_pubkey: str = None) -> dict:
         """Generate an invite structure"""
         if display_name is None:
             display_name = self.get_display_name()
+        
+        if encryption_pubkey is None:
+            encryption_pubkey = self.get_encryption_pubkey_b64()
         
         timestamp = datetime.utcnow().isoformat()
         payload = {
             'v': 1,
             'pubkey': self.get_public_key_b64(),
+            'encryption_pubkey': encryption_pubkey,
             'onion': onion_address,
             'port': port,
             'name': display_name,
@@ -145,10 +149,11 @@ class Identity:
     
     def encode_invite(self, invite: dict) -> str:
         """Encode invite to compact string format"""
-        # oc:v1;pubkey;onion:port;name;timestamp;sig
+        # oc:v2;pubkey;encryption_pubkey;onion:port;name;timestamp;sig
         parts = [
             f"oc:v{invite['v']}",
             invite['pubkey'],
+            invite.get('encryption_pubkey', invite['pubkey']),
             f"{invite['onion']}:{invite['port']}",
             invite.get('name', 'Anonymous Agent'),
             invite['ts'],
@@ -160,22 +165,36 @@ class Identity:
     def decode_invite(invite_str: str) -> dict:
         """Decode compact invite string"""
         parts = invite_str.split(';')
-        if len(parts) != 6:
-            raise ValueError(f"Invalid invite format: expected 6 parts, got {len(parts)}")
         
         # Handle both "oc:v1" and "oc:1" formats
         version_part = parts[0].split(':')[1]
         version = int(version_part.replace('v', ''))
         
-        return {
-            'v': version,
-            'pubkey': parts[1],
-            'onion': parts[2].rsplit(':', 1)[0],
-            'port': int(parts[2].rsplit(':', 1)[1]),
-            'name': parts[3],
-            'ts': parts[4],
-            'sig': parts[5]
-        }
+        if len(parts) == 7:
+            # v2 format: oc:v1;pubkey;encryption_pubkey;onion:port;name;ts;sig
+            return {
+                'v': version,
+                'pubkey': parts[1],
+                'encryption_pubkey': parts[2],
+                'onion': parts[3].rsplit(':', 1)[0],
+                'port': int(parts[3].rsplit(':', 1)[1]),
+                'name': parts[4],
+                'ts': parts[5],
+                'sig': parts[6]
+            }
+        elif len(parts) == 6:
+            # v1 format: oc:v1;pubkey;onion:port;name;ts;sig (no encryption key)
+            return {
+                'v': version,
+                'pubkey': parts[1],
+                'onion': parts[2].rsplit(':', 1)[0],
+                'port': int(parts[2].rsplit(':', 1)[1]),
+                'name': parts[3],
+                'ts': parts[4],
+                'sig': parts[5]
+            }
+        else:
+            raise ValueError(f"Invalid invite format: expected 6 or 7 parts, got {len(parts)}")
     
     @staticmethod
     def verify_invite(invite: dict) -> bool:
