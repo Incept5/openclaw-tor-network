@@ -6,6 +6,30 @@ import sys
 import os
 import time
 import signal
+from pathlib import Path
+
+# Setup logging to file
+log_dir = Path.home() / '.openclaw' / 'p2p'
+log_dir.mkdir(parents=True, exist_ok=True)
+log_file = log_dir / 'daemon.log'
+
+class Logger:
+    def __init__(self, filepath):
+        self.filepath = filepath
+        self.file = open(filepath, 'a')
+
+    def log(self, message):
+        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+        line = f"[{timestamp}] {message}"
+        print(line)
+        self.file.write(line + '\n')
+        self.file.flush()
+
+    def close(self):
+        self.file.close()
+
+logger = Logger(log_file)
+logger.log("=== Daemon starting ===")
 
 # Add lib to path
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -15,7 +39,7 @@ sys.path.insert(0, lib_dir)
 try:
     from agent import P2PAgent
 except ImportError as e:
-    print(f"Error: Cannot import P2PAgent: {e}")
+    logger.log(f"Error: Cannot import P2PAgent: {e}")
     sys.exit(1)
 
 
@@ -23,8 +47,9 @@ def main():
     agent = P2PAgent()
     
     def signal_handler(sig, frame):
-        print("\nShutting down...")
+        logger.log("Shutting down...")
         agent.stop()
+        logger.close()
         sys.exit(0)
     
     signal.signal(signal.SIGINT, signal_handler)
@@ -32,7 +57,8 @@ def main():
     
     try:
         agent.start()
-        print("\nAgent is running. Press Ctrl+C to stop.\n")
+        logger.log("Agent is running. Press Ctrl+C to stop.")
+        logger.log(f"Log file: {log_file}")
         
         # Keep running with periodic status
         counter = 0
@@ -40,13 +66,14 @@ def main():
             time.sleep(1)
             counter += 1
             if counter % 60 == 0:  # Every 60 seconds
-                print(f"[DEBUG] Daemon alive - {counter} seconds uptime")
-            
+                logger.log(f"[DEBUG] Daemon alive - {counter} seconds uptime")
+                
     except Exception as e:
-        print(f"Error: {e}")
+        logger.log(f"Error: {e}")
         import traceback
-        traceback.print_exc()
+        logger.log(traceback.format_exc())
         agent.stop()
+        logger.close()
         sys.exit(1)
 
 
