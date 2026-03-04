@@ -47,10 +47,18 @@ class MessageHandler(BaseHTTPRequestHandler):
                     print(f"[DEBUG] Message stored to inbox")
                 
                 # Notify callback
+                print(f"[DEBUG] Checking callback: {MessageHandler.message_callback}")
                 if MessageHandler.message_callback:
                     print(f"[DEBUG] Calling message callback...")
-                    MessageHandler.message_callback(message)
-                    print(f"[DEBUG] Callback completed")
+                    try:
+                        MessageHandler.message_callback(message)
+                        print(f"[DEBUG] Callback completed successfully")
+                    except Exception as e:
+                        print(f"[DEBUG] Callback FAILED: {e}")
+                        import traceback
+                        traceback.print_exc()
+                else:
+                    print(f"[DEBUG] No callback registered!")
                 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
