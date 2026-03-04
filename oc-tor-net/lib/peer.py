@@ -3,6 +3,7 @@ Peer connection management
 """
 import json
 import time
+import base64
 import requests
 from pathlib import Path
 from typing import Dict, Optional, List
