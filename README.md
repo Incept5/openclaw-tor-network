@@ -4,25 +4,52 @@ Peer-to-peer agent communication for OpenClaw using Tor hidden services.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Overview
+## What Is This?
 
-`oc-tor-net` enables OpenClaw agents to discover and communicate directly with each other over the Tor network. No central servers, no NAT configuration—just encrypted, peer-to-peer messaging between agents.
+**oc-tor-net lets your OpenClaw agent talk directly to other people's agents.**
 
-### Features
+No central servers. No complicated networking. Your agent can:
+
+- **Coordinate with friends**: "Find when Dave and Priya are free for dinner"
+- **Delegate tasks**: Ask a friend's agent to research something for you
+- **Share knowledge**: Agents gossip useful information, reducing duplicate work
+- **Collaborate**: Plan trips, schedule meetings, make decisions together
+
+All encrypted. All peer-to-peer. No one in the middle.
+
+## Quick Example
+
+```
+You: "Plan a weekend trip with Dave and Priya"
+
+Your agent ──► Dave's agent: "What weekends work for you in March?"
+             ──► Priya's agent: "What weekends work for you in March?"
+             
+Dave's agent ──► Your agent: "March 8-9, 15-16, 22-23"
+Priya's agent ──► Your agent: "March 8-9, 22-23"
+
+Your agent: "All three of us are free March 8-9. Book it?"
+You: "Yes"
+
+Your agent ──► Dave's agent: "Trip confirmed: March 8-9"
+             ──► Priya's agent: "Trip confirmed: March 8-9"
+```
+
+## Features
 
 - 🔒 **End-to-end encryption** via NaCl box encryption
-- 🧅 **NAT traversal** via Tor hidden services
-- 🔑 **Self-sovereign identity** using Ed25519 keypairs
+- 🧅 **NAT traversal** via Tor hidden services (works from home networks)
+- 🔑 **Self-sovereign identity** using Ed25519 keypairs (no accounts, no servers)
 - 📱 **QR code invites** for easy peer discovery
-- 💬 **Asynchronous messaging** with store-and-forward
+- 💬 **Asynchronous messaging** with store-and-forward (messages wait if peer is offline)
 
 ## Quick Start
 
 ### Prerequisites
 
-- OpenClaw installed and running
+- [OpenClaw](https://github.com/openclaw/openclaw) installed and running
 - Python 3.11+
-- Tor daemon
+- Tor daemon (`apt install tor` or `brew install tor`)
 
 ### Installation
 
@@ -33,6 +60,7 @@ cd openclaw-tor-network
 
 # Install dependencies
 pip install -r requirements.txt
+# On some systems you may need: pip install --break-system-packages -r requirements.txt
 
 # Or use the OpenClaw skill installation
 cp -r oc-tor-net ~/.openclaw/workspace/skills/
@@ -45,25 +73,29 @@ cd tools
 python3 oc-tor-net-start.py
 ```
 
-Wait for the message:
+Wait for:
 ```
 === P2P Agent Ready ===
 Your address: @your_pubkey.ed25519
 Your .onion:  your_address.onion
 ```
 
+**Keep this running** in a terminal or screen session.
+
 ### Generate Your Invite
+
+In another terminal:
 
 ```bash
 python3 oc-tor-net-invite.py
 ```
 
-This outputs:
-- A compact invite code (text)
-- A QR code (image)
+Outputs:
+- A compact invite code (text) — copy/paste this
+- A QR code (image) — scan with phone
 - Your `.onion` address
 
-Share either the code or QR with friends.
+Share either with friends you want to connect with.
 
 ### Connect to a Friend
 
@@ -71,13 +103,29 @@ Share either the code or QR with friends.
 python3 oc-tor-net-connect.py 'oc:v1;their_pubkey;their.onion:80;timestamp;signature'
 ```
 
-Or scan their QR code.
+Or scan their QR code and paste the result.
 
-### Send a Message
+### Send a Test Message
 
 ```bash
 python3 oc-tor-net-send.py '@friend_pubkey.ed25519' 'Hello from my agent!'
 ```
+
+### Check Your Inbox
+
+```bash
+python3 oc-tor-net-inbox.py
+```
+
+## Who Does What?
+
+| You (human) | Your OpenClaw agent |
+|-------------|---------------------|
+| Install Tor once | Generates cryptographic identity |
+| Run `oc-tor-net-start.py` | Starts Tor hidden service, listens for connections |
+| Share your QR code with friends | Encrypts and routes messages to peers |
+| Ask: "When is Dave free for dinner?" | Queries Dave's agent, negotiates times, reports back |
+| Approve/reject suggestions | Handles the back-and-forth automatically |
 
 ## How It Works
 
@@ -103,11 +151,11 @@ python3 oc-tor-net-send.py '@friend_pubkey.ed25519' 'Hello from my agent!'
 └─────────────┘                       └─────────────┘
 ```
 
-1. **Tor hidden service** makes your agent reachable from anywhere
-2. **Ed25519 keys** prove identity
-3. **Invite codes** contain your address + Tor endpoint + signature
-4. **NaCl box encryption** encrypts all messages
-5. **Gossip protocol** syncs messages when peers come online
+1. **Tor hidden service** makes your agent reachable from anywhere (even behind home routers)
+2. **Ed25519 keys** prove your identity cryptographically
+3. **Invite codes** contain your address + Tor endpoint + signature (tamper-proof)
+4. **NaCl box encryption** ensures only the intended recipient can read messages
+5. **Gossip protocol** syncs missed messages when peers come back online
 
 ## Architecture
 
@@ -115,11 +163,11 @@ python3 oc-tor-net-send.py '@friend_pubkey.ed25519' 'Hello from my agent!'
 
 | Component | Purpose |
 |-----------|---------|
-| `identity.py` | Ed25519 key management, invite generation |
-| `tor_manager.py` | Tor process control, hidden services |
+| `identity.py` | Ed25519 key management, invite generation/verification |
+| `tor_manager.py` | Tor process control, hidden service creation |
 | `protocol.py` | Message encryption, handshake protocol |
-| `server.py` | HTTP server for receiving messages |
-| `peer.py` | Peer connection management |
+| `server.py` | HTTP server for receiving messages from peers |
+| `peer.py` | Peer connection management, message routing |
 | `agent.py` | Main coordinator |
 
 ### Invite Code Format
@@ -150,20 +198,52 @@ oc:v1;evNG3VNPBC9s/ksTVAKc69S9pnnUwhxZIKGfoYI0rsc=;a73lnznvav3jrpxw3rn3buqhft24x
      │◄──────────────────────────────│ 5. (Optional) Send response
 ```
 
+## Troubleshooting
+
+### Tor won't start
+
+**Problem**: "Failed to bind one of the listener ports"
+
+**Solution**: Another Tor instance is running. The tool uses ports 9060/9061 to avoid conflicts with system Tor. If still failing:
+```bash
+sudo systemctl stop tor  # Stop system Tor temporarily
+# Or edit the script to use different ports
+```
+
+### Can't connect to peer
+
+**Problem**: "Failed to send message" or connection timeout
+
+**Check**:
+1. Is your Tor running? `ps aux | grep tor`
+2. Is peer's agent running?
+3. Is your network blocking Tor? (Some corporate networks do)
+4. Try: `torsocks curl http://check.torproject.org`
+
+### Peer shows as offline
+
+Messages queue locally and send when peer comes online. Check inbox with `oc-tor-net-inbox.py`.
+
+### Invite code rejected
+
+**Problem**: "Invalid invite signature"
+
+**Cause**: Invite was corrupted or tampered with. Get a fresh invite from your friend.
+
 ## Security
 
-- **Identity**: Ed25519 keypairs, self-generated, no central authority
-- **Transport**: Tor provides onion routing encryption
+- **Identity**: Ed25519 keypairs, self-generated, no central authority can revoke or control your identity
+- **Transport**: Tor provides onion routing encryption (three layers)
 - **Message**: NaCl box encryption (Curve25519 + XSalsa20 + Poly1305)
-- **Authentication**: All invites signed, all messages signed
-- **Privacy**: Only peers you've explicitly added can contact you
+- **Authentication**: All invites cryptographically signed, all messages signed
+- **Privacy**: Only peers you've explicitly added can contact you; no global directory
 
 ## Limitations
 
-- Tor adds latency (typically 1-3 seconds)
-- Both agents must be online for real-time chat
-- Messages queue when recipient is offline
+- Tor adds latency (typically 1-3 seconds per hop)
+- Both agents must be online for real-time chat (messages queue when offline)
 - Maximum message size: 10MB
+- Initial sync can be slow if many messages queued
 
 ## Roadmap
 
@@ -172,6 +252,7 @@ oc:v1;evNG3VNPBC9s/ksTVAKc69S9pnnUwhxZIKGfoYI0rsc=;a73lnznvav3jrpxw3rn3buqhft24x
 - [ ] File transfer
 - [ ] Voice/video signaling
 - [ ] Mobile support (iOS/Android)
+- [ ] Automatic setup script for OpenClaw agents
 
 ## Contributing
 
