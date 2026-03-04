@@ -9,24 +9,34 @@ import signal
 from pathlib import Path
 
 # Setup logging to file
-log_dir = Path.home() / '.openclaw' / 'p2p'
-log_dir.mkdir(parents=True, exist_ok=True)
-log_file = log_dir / 'daemon.log'
+try:
+    log_dir = Path.home() / '.openclaw' / 'p2p'
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = log_dir / 'daemon.log'
+except Exception as e:
+    print(f"Error creating log directory: {e}")
+    log_file = Path('/tmp/oc-tor-net-daemon.log')
 
 class Logger:
     def __init__(self, filepath):
         self.filepath = filepath
-        self.file = open(filepath, 'a')
+        try:
+            self.file = open(filepath, 'a')
+        except Exception as e:
+            print(f"Error opening log file {filepath}: {e}")
+            self.file = None
 
     def log(self, message):
         timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
         line = f"[{timestamp}] {message}"
         print(line)
-        self.file.write(line + '\n')
-        self.file.flush()
+        if self.file:
+            self.file.write(line + '\n')
+            self.file.flush()
 
     def close(self):
-        self.file.close()
+        if self.file:
+            self.file.close()
 
 logger = Logger(log_file)
 logger.log("=== Daemon starting ===")
