@@ -195,13 +195,18 @@ class P2PAgent:
         
         sender_verify_key = VerifyKey(base64.b64decode(sender_pubkey_b64))
         
+        print(f"  [DEBUG] Attempting decryption...")
+        print(f"  [DEBUG] My encryption pubkey: {base64.b64encode(bytes(encryption_private.public_key)).decode()[:40]}...")
+        print(f"  [DEBUG] Sender verify key: {sender_pubkey_b64[:40]}...")
+        
         decrypted = MessageProtocol.decrypt_message(
             encrypted_message,
             encryption_private,
             sender_verify_key
         )
         
-        if decrypted:
+        else:
+            print(f"  [DEBUG] Decryption FAILED - check keys match")
             msg_type = decrypted.get('type')
             content = decrypted.get('content', {})
             

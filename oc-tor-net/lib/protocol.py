@@ -78,7 +78,9 @@ class MessageProtocol:
             
             return json.loads(plaintext)
         except Exception as e:
-            print(f"Decryption failed: {e}")
+            print(f"[DEBUG] Decryption failed: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     @staticmethod

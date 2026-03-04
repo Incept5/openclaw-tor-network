@@ -179,6 +179,10 @@ class PeerManager:
 
         # Use encryption_pubkey from handshake if available, otherwise fall back to derivation
         encryption_pubkey_b64 = handshake_data.get('encryption_pubkey', sender_pubkey_b64)
+        
+        print(f"  [DEBUG] add_peer_from_handshake: sender_pubkey={sender_pubkey_b64[:20]}...")
+        print(f"  [DEBUG] add_peer_from_handshake: encryption_pubkey={encryption_pubkey_b64[:20]}...")
+        print(f"  [DEBUG] Using encryption_pubkey from handshake: {'encryption_pubkey' in handshake_data}")
 
         # Create peer
         peer = Peer(
