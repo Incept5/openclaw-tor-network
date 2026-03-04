@@ -251,15 +251,18 @@ class P2PAgent:
         content = decrypted.get('content', {})
         
         # Auto-add peer on any valid message from unknown sender
+        agent_log(f"Checking auto-add: peer={peer is not None}, msg_type={msg_type}")
         if not peer:
             try:
-                print(f"  Auto-adding peer from message...")
+                agent_log("Auto-adding peer from message...")
                 
                 # Get sender info from message (all messages now include this)
                 sender_info = content.get('sender_info', {})
+                agent_log(f"sender_info from content: {bool(sender_info)}")
                 
                 # If not in content, check if it's a handshake
                 if not sender_info and msg_type == 'handshake':
+                    agent_log("Extracting from handshake content")
                     sender_info = {
                         'display_name': content.get('display_name', 'Anonymous Agent'),
                         'onion': content.get('onion'),
@@ -271,9 +274,10 @@ class P2PAgent:
                 onion = sender_info.get('onion')
                 port = sender_info.get('port', 80)
                 
+                agent_log(f"Extracted: name={display_name}, onion={onion}, port={port}")
+                
                 if not onion:
-                    print(f"  ⚠ Cannot auto-add: no onion address in message")
-                    print(f"  Message from {sender_address} saved, but you cannot reply")
+                    agent_log("Cannot auto-add: no onion address in message")
                     return
                 
                 peer = self.peers.add_peer_from_handshake({
@@ -283,7 +287,7 @@ class P2PAgent:
                     'encryption_pubkey': sender_info.get('encryption_pubkey')
                 }, sender_pubkey_b64)
                 is_new_peer = True
-                print(f"  ✓ Added: {peer.get_display_label()}")
+                agent_log(f"Added peer: {peer.get_display_label()}")
                 
                 # Notify user that pairing is complete (recipient side)
                 print("  Notifying user of new peer...")
@@ -307,7 +311,9 @@ class P2PAgent:
                 if success:
                     print(f"  ✓ Handshake response sent")
             except Exception as e:
-                print(f"  ✗ Failed to auto-add: {e}")
+                agent_log(f"Failed to auto-add: {e}")
+                import traceback
+                agent_log(traceback.format_exc())
                 return
         
         if not peer:
