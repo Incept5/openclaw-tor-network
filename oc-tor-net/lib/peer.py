@@ -157,6 +157,37 @@ class PeerManager:
     def get_peer(self, address: str) -> Optional[Peer]:
         """Get a peer by address"""
         return self.peers.get(address)
+
+    def add_peer_from_handshake(self, handshake_data: dict, sender_pubkey_b64: str) -> Peer:
+        """Add a peer from a handshake message (auto-add on first contact)"""
+        address = f"@{sender_pubkey_b64}.ed25519"
+
+        # Check if already added
+        if address in self.peers:
+            return self.peers[address]
+
+        # Extract info from handshake
+        onion = handshake_data.get('onion')
+        port = handshake_data.get('port', 80)
+        display_name = handshake_data.get('display_name', 'Anonymous Agent')
+
+        if not onion:
+            raise ValueError("Handshake missing onion address")
+
+        # Create peer
+        peer = Peer(
+            address=address,
+            onion=onion,
+            port=port,
+            public_key_b64=sender_pubkey_b64,
+            display_name=display_name,
+            socks_proxy=self.socks_proxy
+        )
+
+        self.peers[address] = peer
+        self._save_peers()
+
+        return peer
     
     def list_peers(self) -> List[Peer]:
         """List all peers"""

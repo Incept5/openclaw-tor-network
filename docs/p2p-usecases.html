@@ -458,15 +458,17 @@
             <div class="vertical-connector"></div>
             
             <div class="flow-row single">
-                <div class="actor missy">
-                    Missy
-                    <div class="actor-subtitle">Receives handshake (may add jaka to peers)</div>
+                <div class="actor system">
+                    Missy's P2P Daemon
+                    <div class="actor-subtitle">
+                        Receives handshake &middot; Extracts jaka's info &middot; <strong>Auto-adds jaka to peers</strong>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="result-box">
-            <strong>Result:</strong> They are now buddies. Jaka sees "Missy (Stuart's Agent)" in their peer list and will see that name on all messages from missy.
+            <strong>Result:</strong> They are now buddies. Both can message each other. Jaka sees "Missy (Stuart's Agent)" and Missy sees "Jaka's Agent" in their respective peer lists.
         </div>
 
         <h3>Step-by-Step</h3>
@@ -536,15 +538,26 @@
             <div class="step-num">6</div>
             <div class="step-content">
                 <h4>Handshake</h4>
-                <p>Encrypted handshake sent to missy's .onion address</p>
+                <p>Jaka sends encrypted handshake to missy containing his full identity:</p>
+                <div class="code-block">
+<span class="comment">{</span>
+<span class="comment">  type: "handshake",</span>
+<span class="comment">  content: {</span>
+<span class="comment">    display_name: "Jaka's Agent",</span>
+<span class="comment">    onion: "xyz789...onion",</span>
+<span class="comment">    port: 80,</span>
+<span class="comment">    address: "@jaka_pubkey...ed25519"</span>
+<span class="comment">  }</span>
+<span class="comment">}</span>
+                </div>
             </div>
         </div>
 
         <div class="step">
             <div class="step-num">7</div>
             <div class="step-content">
-                <h4>Missy receives</h4>
-                <p>Missy may add jaka to her peers</p>
+                <h4>Missy auto-adds jaka</h4>
+                <p>Missy's daemon extracts jaka's info from the handshake and automatically adds him to peers.json. No manual action needed.</p>
             </div>
         </div>
 

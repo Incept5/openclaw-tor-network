@@ -110,8 +110,12 @@ class P2PAgent:
             peer = self.peers.add_peer(invite_code)
             print(f"Added peer: {peer.address}")
             
-            # Send handshake
-            handshake = MessageProtocol.create_handshake(self.identity)
+            # Send handshake with full identity info for auto-add
+            handshake = MessageProtocol.create_handshake(
+                self.identity,
+                self._onion_address,
+                port=80
+            )
             success = self.peers.send_to_peer(peer.address, handshake)
             
             if success:
@@ -164,9 +168,11 @@ class P2PAgent:
         sender_address = f"@{sender_pubkey_b64}.ed25519"
         peer = self.peers.get_peer(sender_address)
         
+        is_new_peer = False
         if not peer:
             print(f"  Unknown sender: {sender_address}")
-            return
+            print("  Will attempt auto-add from handshake content")
+            # Don't return - try to decrypt first, then auto-add if it's a handshake
         
         # Decrypt
         from nacl.public import PrivateKey
@@ -188,9 +194,30 @@ class P2PAgent:
         )
         
         if decrypted:
-            print(f"  From: {sender_address}")
-            print(f"  Type: {decrypted.get('type')}")
-            print(f"  Content: {decrypted.get('content')}")
+            msg_type = decrypted.get('type')
+            content = decrypted.get('content', {})
+            
+            # Auto-add peer on handshake from unknown sender
+            if not peer and msg_type == 'handshake':
+                try:
+                    print(f"  Auto-adding peer from handshake...")
+                    peer = self.peers.add_peer_from_handshake(content, sender_pubkey_b64)
+                    is_new_peer = True
+                    print(f"  ✓ Added: {peer.get_display_label()}")
+                except Exception as e:
+                    print(f"  ✗ Failed to auto-add: {e}")
+                    return
+            
+            if not peer:
+                print(f"  Cannot process: unknown sender and not a handshake")
+                return
+            
+            print(f"  From: {peer.get_display_label()}")
+            print(f"  Type: {msg_type}")
+            print(f"  Content: {content}")
+            
+            if is_new_peer:
+                print(f"  🎉 New peer! You can now reply to {peer.display_name}")
             
             # Notify OpenClaw via webhook
             print("  Notifying OpenClaw...")
