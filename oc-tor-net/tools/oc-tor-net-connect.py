@@ -70,12 +70,13 @@ def main(invite_code: str):
             print(f"  python3 oc-tor-net-send.py '{address}' 'Hello!'")
             return
     
-    # Create peer entry
+    # Create peer entry (use encryption_pubkey if available, fall back to pubkey)
+    encryption_pubkey = invite.get('encryption_pubkey', invite['pubkey'])
     peer_data = {
         address: {
             'onion': invite['onion'],
             'port': invite['port'],
-            'public_key': invite['pubkey'],
+            'public_key': encryption_pubkey,
             'display_name': display_name,
             'added': invite['ts']
         }
