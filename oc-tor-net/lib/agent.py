@@ -121,6 +121,16 @@ class P2PAgent:
             if success:
                 print(f"Handshake sent to {peer.address}")
                 peer.handshake_complete = True
+                
+                # Notify user that pairing is complete (initiator side)
+                print("Notifying user of successful pairing...")
+                notified = self.webhook.notify_pairing_complete(
+                    peer.display_name,
+                    peer.address,
+                    is_initiator=True
+                )
+                if notified:
+                    print(f"  ✓ User notified: Connected to {peer.display_name}")
             else:
                 print(f"Failed to send handshake to {peer.address}")
             
@@ -204,6 +214,16 @@ class P2PAgent:
                     peer = self.peers.add_peer_from_handshake(content, sender_pubkey_b64)
                     is_new_peer = True
                     print(f"  ✓ Added: {peer.get_display_label()}")
+                    
+                    # Notify user that pairing is complete (recipient side)
+                    print("  Notifying user of new peer...")
+                    notified = self.webhook.notify_pairing_complete(
+                        peer.display_name,
+                        peer.address,
+                        is_initiator=False
+                    )
+                    if notified:
+                        print(f"  ✓ User notified: New peer {peer.display_name}")
                 except Exception as e:
                     print(f"  ✗ Failed to auto-add: {e}")
                     return

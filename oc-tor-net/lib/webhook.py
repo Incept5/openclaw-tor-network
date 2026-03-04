@@ -137,3 +137,46 @@ class OpenClawWebhook:
             return response.status_code == 200
         except Exception:
             return False
+
+    def notify_pairing_complete(self, peer_display_name: str, peer_address: str, is_initiator: bool = False) -> bool:
+        """
+        Notify OpenClaw that a pairing has been completed.
+        This is reported on the default channel regardless of how pairing was triggered.
+        
+        Args:
+            peer_display_name: The display name of the peer
+            peer_address: The P2P address of the peer
+            is_initiator: True if this agent initiated the pairing (sent invite)
+        
+        Returns:
+            True if notification sent successfully
+        """
+        short_address = peer_address[1:12] + "..." + peer_address[-12:]
+        
+        if is_initiator:
+            title = f"✅ Connected to {peer_display_name}"
+            message = f"They accepted your invite. You can now send messages to {peer_display_name} ({short_address})."
+        else:
+            title = f"🎉 New peer: {peer_display_name}"
+            message = f"They added you and sent a handshake. You can now reply to {peer_display_name} ({short_address})."
+        
+        payload = {
+            'type': 'p2p_pairing_complete',
+            'title': title,
+            'message': message,
+            'peer_name': peer_display_name,
+            'peer_address': peer_address,
+            'is_initiator': is_initiator,
+            'channel': 'default',  # Report on default channel (Telegram)
+            'priority': 'high'
+        }
+        
+        # Try all notification methods
+        if self._post_to_gateway(payload):
+            return True
+        if self._write_notification_file(payload):
+            return True
+        if self._write_to_priority_inbox(payload):
+            return True
+        
+        return False
