@@ -5,6 +5,7 @@ import os
 import json
 from pathlib import Path
 from typing import Optional
+from datetime import datetime
 
 from identity import Identity
 from tor_manager import TorManager
@@ -12,6 +13,17 @@ from server import MessageServer
 from peer import PeerManager
 from protocol import MessageProtocol
 from webhook import OpenClawWebhook
+
+
+def agent_log(msg):
+    """Write directly to log file"""
+    try:
+        log_file = Path.home() / ".openclaw" / "p2p" / "daemon.log"
+        with open(log_file, 'a') as f:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            f.write(f"[{timestamp}] [AGENT] {msg}\n")
+    except:
+        pass
 
 
 class P2PAgent:
@@ -170,9 +182,9 @@ class P2PAgent:
     
     def _on_message_received(self, encrypted_message: dict):
         """Callback when a message is received"""
-        print(f"\n[Received encrypted message]")
-        print(f"  [DEBUG] Message keys: {list(encrypted_message.keys())}")
-        print(f"  [DEBUG] Has sender_pubkey: {'sender_pubkey' in encrypted_message}")
+        agent_log("_on_message_received called")
+        agent_log(f"Message keys: {list(encrypted_message.keys())}")
+        agent_log(f"Has sender_pubkey: {'sender_pubkey' in encrypted_message}")
         
         # Get sender's public key from message
         sender_pubkey_b64 = encrypted_message.get('sender_pubkey')
@@ -207,10 +219,10 @@ class P2PAgent:
         )
         
         if not decrypted:
-            print(f"  [DEBUG] Decryption FAILED - check keys match")
+            agent_log("Decryption FAILED - keys don't match")
             return
         
-        print(f"  [DEBUG] Decryption SUCCESS")
+        agent_log("Decryption SUCCESS")
         msg_type = decrypted.get('type')
         content = decrypted.get('content', {})
         
