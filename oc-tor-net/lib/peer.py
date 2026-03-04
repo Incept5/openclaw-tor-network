@@ -180,9 +180,17 @@ class PeerManager:
         # Use encryption_pubkey from handshake if available, otherwise fall back to derivation
         encryption_pubkey_b64 = handshake_data.get('encryption_pubkey', sender_pubkey_b64)
         
-        print(f"  [DEBUG] add_peer_from_handshake: sender_pubkey={sender_pubkey_b64[:20]}...")
-        print(f"  [DEBUG] add_peer_from_handshake: encryption_pubkey={encryption_pubkey_b64[:20]}...")
-        print(f"  [DEBUG] Using encryption_pubkey from handshake: {'encryption_pubkey' in handshake_data}")
+        # Debug logging
+        from pathlib import Path
+        from datetime import datetime
+        try:
+            with open(Path.home() / '.openclaw' / 'p2p' / 'daemon.log', 'a') as f:
+                ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                f.write(f"[{ts}] [PEER] sender_pubkey={sender_pubkey_b64[:30]}...\n")
+                f.write(f"[{ts}] [PEER] encryption_pubkey={encryption_pubkey_b64[:30]}...\n")
+                f.write(f"[{ts}] [PEER] using_encryption_from_handshake={'encryption_pubkey' in handshake_data}\n")
+        except:
+            pass
 
         # Create peer
         peer = Peer(
