@@ -50,6 +50,26 @@ class Identity:
         # Restrict permissions
         os.chmod(self.keys_file, 0o600)
     
+    def get_display_name(self) -> str:
+        """Get the display name for this agent"""
+        config_file = self.config_dir / "config.json"
+        if config_file.exists():
+            with open(config_file) as f:
+                config = json.load(f)
+            return config.get('display_name', 'Anonymous Agent')
+        return 'Anonymous Agent'
+    
+    def set_display_name(self, name: str):
+        """Set the display name for this agent"""
+        config_file = self.config_dir / "config.json"
+        config = {}
+        if config_file.exists():
+            with open(config_file) as f:
+                config = json.load(f)
+        config['display_name'] = name
+        with open(config_file, 'w') as f:
+            json.dump(config, f, indent=2)
+    
     def get_public_key(self) -> VerifyKey:
         """Get the verify key object"""
         return self.verify_key
@@ -87,14 +107,18 @@ class Identity:
         key_bytes = base64.b64decode(key_b64)
         return VerifyKey(key_bytes)
     
-    def generate_invite(self, onion_address: str, port: int = 80) -> dict:
+    def generate_invite(self, onion_address: str, port: int = 80, display_name: str = None) -> dict:
         """Generate an invite structure"""
+        if display_name is None:
+            display_name = self.get_display_name()
+        
         timestamp = datetime.utcnow().isoformat()
         payload = {
             'v': 1,
             'pubkey': self.get_public_key_b64(),
             'onion': onion_address,
             'port': port,
+            'name': display_name,
             'ts': timestamp
         }
         # Sign the canonical JSON
@@ -104,11 +128,12 @@ class Identity:
     
     def encode_invite(self, invite: dict) -> str:
         """Encode invite to compact string format"""
-        # oc:v1;pubkey;onion:port;timestamp;sig
+        # oc:v1;pubkey;onion:port;name;timestamp;sig
         parts = [
             f"oc:v{invite['v']}",
             invite['pubkey'],
             f"{invite['onion']}:{invite['port']}",
+            invite.get('name', 'Anonymous Agent'),
             invite['ts'],
             invite['sig']
         ]
@@ -118,18 +143,33 @@ class Identity:
     def decode_invite(invite_str: str) -> dict:
         """Decode compact invite string"""
         parts = invite_str.split(';')
-        if len(parts) != 5:
-            raise ValueError("Invalid invite format")
-        
-        version = parts[0].split(':')[1]
-        return {
-            'v': int(version),
-            'pubkey': parts[1],
-            'onion': parts[2].rsplit(':', 1)[0],
-            'port': int(parts[2].rsplit(':', 1)[1]),
-            'ts': parts[3],
-            'sig': parts[4]
-        }
+        # Support both old format (5 parts) and new format (6 parts with name)
+        if len(parts) == 5:
+            # Old format without name
+            version = parts[0].split(':')[1]
+            return {
+                'v': int(version),
+                'pubkey': parts[1],
+                'onion': parts[2].rsplit(':', 1)[0],
+                'port': int(parts[2].rsplit(':', 1)[1]),
+                'name': 'Anonymous Agent',
+                'ts': parts[3],
+                'sig': parts[4]
+            }
+        elif len(parts) == 6:
+            # New format with name
+            version = parts[0].split(':')[1]
+            return {
+                'v': int(version),
+                'pubkey': parts[1],
+                'onion': parts[2].rsplit(':', 1)[0],
+                'port': int(parts[2].rsplit(':', 1)[1]),
+                'name': parts[3],
+                'ts': parts[4],
+                'sig': parts[5]
+            }
+        else:
+            raise ValueError(f"Invalid invite format: expected 5 or 6 parts, got {len(parts)}")
     
     @staticmethod
     def verify_invite(invite: dict) -> bool:

@@ -4,12 +4,14 @@ Generate an invite code to share with others
 """
 import sys
 import json
+import os
 
-sys.path.insert(0, '../lib')
-sys.path.insert(0, './lib')
+# Add lib to path
+script_dir = os.path.dirname(os.path.abspath(__file__))
+lib_dir = os.path.join(script_dir, '..', 'lib')
+sys.path.insert(0, lib_dir)
 
 try:
-    from agent import P2PAgent
     from identity import Identity
 except ImportError as e:
     print(f"Error: {e}")
@@ -17,8 +19,6 @@ except ImportError as e:
 
 
 def main():
-    # Check if agent is running by looking for identity
-    import os
     from pathlib import Path
     
     config_dir = Path.home() / ".openclaw/p2p"
@@ -26,22 +26,64 @@ def main():
     tor_hostname = config_dir / "tor" / "hidden_service" / "hostname"
     
     if not identity_file.exists():
-        print("Error: No identity found. Run p2p_start.py first.")
+        print("Error: No identity found. Run oc-tor-net-start.py first.")
         sys.exit(1)
     
     if not tor_hostname.exists():
-        print("Error: Tor not running. Run p2p_start.py first.")
+        print("Error: Tor not running. Run oc-tor-net-start.py first.")
         sys.exit(1)
     
     # Load identity
     identity = Identity(str(config_dir))
     
+    # Get or set display name
+    current_name = identity.get_display_name()
+    
+    print("=" * 60)
+    print("P2P INVITE SETUP")
+    print("=" * 60)
+    print()
+    print("This name will be shown to people you invite:")
+    print()
+    
+    if current_name != "Anonymous Agent":
+        print(f"Current name: {current_name}")
+        response = input("Keep this name? [Y/n] or enter new name: ").strip()
+        if response and response.lower() != 'y':
+            display_name = response
+            identity.set_display_name(display_name)
+        else:
+            display_name = current_name
+    else:
+        print("You haven't set a display name yet.")
+        print()
+        print("When someone receives your invite, they will see this name")
+        print("in their peer list and in messages from you.")
+        print()
+        print("Examples:")
+        print("  - 'Stuart's Agent'")
+        print("  - 'Missy (Stuart's OpenClaw)'")
+        print("  - 'Stuart - Work Agent'")
+        print()
+        display_name = input("Enter your display name: ").strip()
+        if not display_name:
+            display_name = "Anonymous Agent"
+        identity.set_display_name(display_name)
+    
+    print()
+    print(f"Your display name: {display_name}")
+    print()
+    print("When jaka accepts your invite, they will see:")
+    print(f"  '{display_name} (@evNG3V...ed25519)' in their peer list")
+    print(f"  'Message from {display_name}' when you send messages")
+    print()
+    
     # Read onion address
     with open(tor_hostname) as f:
         onion = f.read().strip()
     
-    # Generate invite
-    invite = identity.generate_invite(onion, port=80)
+    # Generate invite with display name
+    invite = identity.generate_invite(onion, port=80, display_name=display_name)
     invite_code = identity.encode_invite(invite)
     
     print("=" * 60)
@@ -55,7 +97,7 @@ def main():
     print("Share this code with friends to let them connect to your agent.")
     print()
     print("They can accept it with:")
-    print(f"  python3 p2p_accept_invite.py '{invite_code}'")
+    print(f"  python3 oc-tor-net-connect.py '{invite_code}'")
     print()
     
     # Generate QR code if possible
@@ -73,7 +115,7 @@ def main():
         qr_img = qr.make_image(fill_color="black", back_color="white")
         qr_path = "/tmp/p2p-invite.png"
         qr_img.save(qr_path)
-        print(f"QR code also saved to: {qr_path}")
+        print(f"QR code saved to: {qr_path}")
         
     except ImportError:
         print("(Install 'qrcode' package to see QR code)")
@@ -81,6 +123,7 @@ def main():
     # Output JSON for programmatic use
     output = {
         "invite_code": invite_code,
+        "display_name": display_name,
         "address": identity.get_address(),
         "onion": onion
     }

@@ -22,12 +22,14 @@ class Peer:
         onion: str,
         port: int,
         public_key_b64: str,
+        display_name: str = "Anonymous Agent",
         socks_proxy: dict = None
     ):
         self.address = address  # @pubkey.ed25519
         self.onion = onion
         self.port = port
         self.public_key_b64 = public_key_b64
+        self.display_name = display_name
         self.public_key = PublicKey(base64.b64decode(public_key_b64))
         self.socks_proxy = socks_proxy or {
             'http': 'socks5h://127.0.0.1:9050',
@@ -35,6 +37,11 @@ class Peer:
         }
         self.last_seen = None
         self.handshake_complete = False
+    
+    def get_display_label(self) -> str:
+        """Get a human-readable label for this peer"""
+        short_key = self.address[1:8] + "..." + self.address[-8:]
+        return f"{self.display_name} ({short_key})"
     
     def get_url(self, path: str = '') -> str:
         """Get full URL for this peer"""
@@ -111,6 +118,7 @@ class PeerManager:
                 'onion': peer.onion,
                 'port': peer.port,
                 'public_key': peer.public_key_b64,
+                'display_name': peer.display_name,
                 'last_seen': peer.last_seen
             }
         with open(self.peers_file, 'w') as f:
@@ -137,6 +145,7 @@ class PeerManager:
             onion=invite['onion'],
             port=invite['port'],
             public_key_b64=invite['pubkey'],
+            display_name=invite.get('name', 'Anonymous Agent'),
             socks_proxy=self.socks_proxy
         )
         

@@ -6,16 +6,13 @@ import sys
 import json
 from pathlib import Path
 
-sys.path.insert(0, '../lib')
-sys.path.insert(0, './lib')
-
 
 def main():
     config_dir = Path.home() / ".openclaw/p2p"
     peers_file = config_dir / "peers.json"
     
     if not peers_file.exists():
-        print("No peers found. Run p2p_accept_invite.py to add peers.")
+        print("No peers found. Run oc-tor-net-connect.py to add peers.")
         return []
     
     with open(peers_file) as f:
@@ -25,18 +22,31 @@ def main():
         print("No peers found.")
         return []
     
-    print("Known peers:")
-    print("=" * 60)
+    print("=" * 70)
+    print("YOUR PEERS")
+    print("=" * 70)
+    print()
     
-    for address, info in peers.items():
-        print(f"Address:    {address}")
-        print(f"Onion:      {info['onion']}")
-        print(f"Port:       {info['port']}")
-        print(f"Added:      {info.get('added', 'unknown')}")
-        print(f"Last seen:  {info.get('last_seen', 'never')}")
-        print("-" * 60)
+    for i, (address, info) in enumerate(peers.items(), 1):
+        display_name = info.get('display_name', 'Anonymous Agent')
+        short_address = address[1:12] + "..." + address[-12:]
+        
+        print(f"{i}. {display_name}")
+        print(f"   Address:  {short_address}")
+        print(f"   Onion:    {info['onion']}")
+        print(f"   Added:    {info.get('added', 'unknown')}")
+        if info.get('last_seen'):
+            print(f"   Last seen: {info['last_seen']}")
+        print()
     
-    print(f"\nTotal: {len(peers)} peer(s)")
+    print("=" * 70)
+    print(f"Total: {len(peers)} peer(s)")
+    print()
+    print("To send a message:")
+    print("  python3 oc-tor-net-send.py '@address' 'Your message'")
+    print()
+    print("You can use a prefix if unique:")
+    print("  python3 oc-tor-net-send.py '@abc123' 'Hello!'")
     
     return list(peers.keys())
 
