@@ -194,12 +194,21 @@ class PeerManager:
         """List all peers"""
         return list(self.peers.values())
     
-    def send_to_peer(self, address: str, message: dict) -> bool:
+    def send_to_peer(self, address: str, message: dict, include_sender_info: bool = True) -> bool:
         """Send a message to a specific peer"""
         peer = self.get_peer(address)
         if not peer:
             print(f"Unknown peer: {address}")
             return False
+        
+        # Add sender info for auto-add capability (unless it's already a handshake)
+        if include_sender_info and message.get('type') != 'handshake':
+            message['sender_info'] = {
+                'display_name': self.identity.get_display_name(),
+                'onion': self.tor_onion if hasattr(self, 'tor_onion') else None,
+                'port': 80,
+                'address': self.identity.get_address()
+            }
         
         # Encrypt message
         encrypted = MessageProtocol.encrypt_message(

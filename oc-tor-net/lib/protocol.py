@@ -85,15 +85,22 @@ class MessageProtocol:
     def create_message(
         msg_type: str,
         content: dict,
-        thread_id: str = None
+        thread_id: str = None,
+        sender_info: dict = None
     ) -> dict:
         """Create a standard message envelope"""
-        return {
+        msg = {
             'type': msg_type,
             'content': content,
             'ts': datetime.utcnow().isoformat(),
             'thread': thread_id or generate_thread_id()
         }
+        
+        # Include sender info for auto-add capability
+        if sender_info:
+            msg['sender_info'] = sender_info
+        
+        return msg
     
     @staticmethod
     def create_handshake(identity, onion_address: str, port: int = 80) -> dict:

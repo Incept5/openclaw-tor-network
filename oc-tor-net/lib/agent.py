@@ -63,6 +63,8 @@ class P2PAgent:
             data_dir=str(self.config_dir),
             socks_proxy=self.tor.get_socks_proxy()
         )
+        # Store onion address in peer manager for sender info
+        self.peers.tor_onion = self._onion_address
         
         # 5. Initialize webhook for OpenClaw notification
         print("Initializing OpenClaw webhook...")
@@ -207,23 +209,59 @@ class P2PAgent:
             msg_type = decrypted.get('type')
             content = decrypted.get('content', {})
             
-            # Auto-add peer on handshake from unknown sender
-            if not peer and msg_type == 'handshake':
+            # Auto-add peer on any valid message from unknown sender
+            if not peer:
                 try:
-                    print(f"  Auto-adding peer from handshake...")
-                    peer = self.peers.add_peer_from_handshake(content, sender_pubkey_b64)
-                    is_new_peer = True
-                    print(f"  ✓ Added: {peer.get_display_label()}")
+                    print(f"  Auto-adding peer from message...")
                     
-                    # Notify user that pairing is complete (recipient side)
-                    print("  Notifying user of new peer...")
-                    notified = self.webhook.notify_pairing_complete(
-                        peer.display_name,
-                        peer.address,
-                        is_initiator=False
-                    )
-                    if notified:
-                        print(f"  ✓ User notified: New peer {peer.display_name}")
+                    # Get sender info from message (all messages now include this)
+                    sender_info = content.get('sender_info', {})
+                    
+                    # If not in content, check if it's a handshake
+                    if not sender_info and msg_type == 'handshake':
+                        sender_info = {
+                            'display_name': content.get('display_name', 'Anonymous Agent'),
+                            'onion': content.get('onion'),
+                            'port': content.get('port', 80)
+                        }
+                    
+                    display_name = sender_info.get('display_name', 'Anonymous Agent')
+                    onion = sender_info.get('onion')
+                    port = sender_info.get('port', 80)
+                    
+                    if not onion:
+                        print(f"  ⚠ Cannot auto-add: no onion address in message")
+                        print(f"  Message from {sender_address} saved, but you cannot reply")
+                        # Still process the message
+                    else:
+                        peer = self.peers.add_peer_from_handshake({
+                            'display_name': display_name,
+                            'onion': onion,
+                            'port': port
+                        }, sender_pubkey_b64)
+                        is_new_peer = True
+                        print(f"  ✓ Added: {peer.get_display_label()}")
+                        
+                        # Notify user that pairing is complete (recipient side)
+                        print("  Notifying user of new peer...")
+                        notified = self.webhook.notify_pairing_complete(
+                            peer.display_name,
+                            peer.address,
+                            is_initiator=False
+                        )
+                        if notified:
+                            print(f"  ✓ User notified: New peer {peer.display_name}")
+                        
+                        # Send handshake back so they can add us too
+                        print(f"  Sending handshake response...")
+                        response_handshake = MessageProtocol.create_handshake(
+                            self.identity,
+                            self._onion_address,
+                            port=80
+                        )
+                        success = self.peers.send_to_peer(peer.address, response_handshake)
+                        if success:
+                            print(f"  ✓ Handshake response sent")
                 except Exception as e:
                     print(f"  ✗ Failed to auto-add: {e}")
                     return
