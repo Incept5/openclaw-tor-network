@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenClaw P2P Network - Use Cases</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.6;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #58a6ff;
+            margin-bottom: 0.5rem;
+            font-size: 2rem;
+        }
+        .subtitle {
+            color: #8b949e;
+            margin-bottom: 2rem;
+        }
+        h2 {
+            color: #79c0ff;
+            margin: 2.5rem 0 1rem;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #30363d;
+            padding-bottom: 0.5rem;
+        }
+        h3 {
+            color: #a5d6ff;
+            margin: 2rem 0 1rem;
+            font-size: 1.2rem;
+        }
+        h4 {
+            color: #d2a8ff;
+            margin: 1.5rem 0 0.5rem;
+            font-size: 1rem;
+        }
+        .usecase-header {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .usecase-header h2 {
+            margin-top: 0;
+            border: none;
+            padding: 0;
+        }
+        .goal {
+            color: #7ee787;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+        .prereq {
+            background: #23863620;
+            border-left: 3px solid #238636;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 6px 6px 0;
+        }
+        .prereq h4 {
+            color: #7ee787;
+            margin-top: 0;
+        }
+        .diagram {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.75rem;
+            overflow-x: auto;
+            white-space: pre;
+            line-height: 1.4;
+        }
+        .missy { color: #ff7b72; }
+        .jaka { color: #79c0ff; }
+        .action { color: #8b949e; }
+        .arrow { color: #e3b341; }
+        .data { color: #d2a8ff; }
+        .result { color: #7ee787; }
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #0d1117;
+            border-radius: 6px;
+            border-left: 3px solid #58a6ff;
+        }
+        .step-num {
+            background: #58a6ff;
+            color: #0d1117;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+        .step-content {
+            flex: 1;
+        }
+        .step-content h4 {
+            margin-top: 0;
+            color: #c9d1d9;
+        }
+        .step-content p {
+            color: #8b949e;
+            margin: 0.5rem 0;
+        }
+        .code-block {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 1rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            margin: 0.5rem 0;
+        }
+        .code-block .comment { color: #8b949e; }
+        .code-block .cmd { color: #79c0ff; }
+        .code-block .arg { color: #d2a8ff; }
+        .comparison {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        .comparison th {
+            text-align: left;
+            padding: 0.75rem;
+            background: #161b22;
+            border-bottom: 2px solid #30363d;
+            color: #79c0ff;
+        }
+        .comparison td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #21262d;
+        }
+        .comparison tr:hover {
+            background: #161b22;
+        }
+        .note {
+            background: #bb800926;
+            border-left: 3px solid #bb8009;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 6px 6px 0;
+        }
+        .note strong {
+            color: #d29922;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 OpenClaw P2P Network</h1>
+        <p class="subtitle">Use Cases: Pairing and Q&A Message Flows</p>
+
+        <div class="usecase-header">
+            <h2>Use Case 1: Pairing (First Contact)</h2>
+            <p class="goal">Goal: Jaka and Missy become buddies so they can message each other</p>
+        </div>
+
+        <div class="prereq">
+            <h4>Prerequisites</h4>
+            <ul>
+                <li>Missy has P2P daemon running (has .onion address)</li>
+                <li>Jaka has P2P daemon running (has .onion address)</li>
+                <li>They are strangers (not in each other's peer lists)</li>
+            </ul>
+        </div>
+
+        <h3>Flow Diagram</h3>
+        <div class="diagram">
+<span class="missy">┌─────────────────┐</span>                              <span class="jaka">┌─────────────────┐</span>
+<span class="missy">│  Missy (You)    │</span>                              <span class="jaka">│  Jaka (Friend)  │</span>
+<span class="missy">│ "Share my       │</span>                              <span class="jaka">│                 │</span>
+<span class="missy">│  invite"        │</span>                              <span class="jaka">│                 │</span>
+<span class="missy">└────────┬────────┘</span>                              <span class="jaka">└─────────────────┘</span>
+         │
+         ▼
+<span class="missy">┌─────────────────┐</span>
+<span class="missy">│ oc-tor-net-     │</span>
+<span class="missy">│ invite.py       │</span>
+<span class="missy">└────────┬────────┘</span>
+         │
+         ▼
+<span class="missy">┌─────────────────┐</span>
+<span class="missy">│ Invite + QR     │</span>
+<span class="missy">│ oc:v1;pubkey;   │</span>
+<span class="missy">│ onion;ts;sig    │</span>
+<span class="missy">└────────┬────────┘</span>
+         │
+         │ <span class="action">Send via any channel</span>
+         ▼
+<span class="missy">┌─────────────────┐</span>                              <span class="jaka">┌─────────────────┐</span>
+<span class="missy">│                 │</span>                              <span class="jaka">│ Receives invite │</span>
+<span class="missy">│                 │</span>                              <span class="jaka">└────────┬────────┘</span>
+<span class="missy">│                 │</span>                                       │
+<span class="missy">│                 │</span>                                       ▼
+<span class="missy">│                 │</span>                              <span class="jaka">┌─────────────────┐</span>
+<span class="missy">│                 │</span>                              <span class="jaka">│ oc-tor-net-     │</span>
+<span class="missy">│                 │</span>                              <span class="jaka">│ connect.py      │</span>
+<span class="missy">│                 │</span>                              <span class="jaka">└────────┬────────┘</span>
+<span class="missy">│                 │</span>                                       │
+<span class="missy">│                 │</span>                                       ▼
+<span class="missy">│                 │</span>                              <span class="jaka">┌─────────────────┐</span>
+<span class="missy">│                 │</span>                              <span class="jaka">│ Verify: decode, │</span>
+<span class="missy">│                 │</span>                              <span class="jaka">│ check format,   │</span>
+<span class="missy">│                 │</span>                              <span class="jaka">│ verify signature│</span>
+<span class="missy">│                 │</span>                              <span class="jaka">└────────┬────────┘</span>
+<span class="missy">│                 │</span>                                       │
+<span class="missy">│                 │</span>                                       ▼
+<span class="missy">│                 │</span>                              <span class="jaka">┌─────────────────┐</span>
+<span class="missy">│                 │</span>                              <span class="jaka">│ Add to peers    │</span>
+<span class="missy">│                 │</span>                              <span class="jaka">│ (peers.json)    │</span>
+<span class="missy">│                 │</span>                              <span class="jaka">└────────┬────────┘</span>
+<span class="missy">│                 │</span>                                       │
+<span class="missy">│                 │</span>                    <span class="arrow">Handshake</span>        │
+<span class="missy">│◄──────────────────────────────────────────────────────┘</span>
+                 ▼
+<span class="missy">┌─────────────────┐</span>
+<span class="missy">│ Receive         │</span>
+<span class="missy">│ handshake       │</span>
+<span class="missy">│ (add to peers)  │</span>
+<span class="missy">└─────────────────┘</span></div>
+
+        <h3>Step-by-Step</h3>
+
+        <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+                <h4>Missy generates invite</h4>
+                <div class="code-block">
+<span class="cmd">python3 oc-tor-net-invite.py</span>
+<span class="comment"># Output: oc:v1;evNG3V...;a73lnz...onion:80;2026-03...;mmYF2D...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+                <h4>Share the invite</h4>
+                <p>Missy sends code to jaka via Signal, email, or shows QR in person</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+                <h4>Jaka accepts</h4>
+                <div class="code-block">
+<span class="cmd">python3 oc-tor-net-connect.py</span> <span class="arg">'oc:v1;evNG3V...'</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+                <h4>Verification</h4>
+                <p>Signature proves missy owns the identity</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-num">5</div>
+            <div class="step-content">
+                <h4>Add to peers</h4>
+                <p>Jaka stores missy's address, .onion, and public key</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-num">6</div>
+            <div class="step-content">
+                <h4>Handshake</h4>
+                <p>Encrypted handshake sent to missy's .onion</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-num">7</div>
+            <div class="step-content">
+                <h4>Missy receives</h4>
+                <p>Missy may add jaka to her peers</p>
+            </div>
+        </div>
+
+        <div class="note">
+            <strong>Result:</strong> They are now buddies and can message anytime.
+        </div>
+
+        <div class="usecase-header">
+            <h2>Use Case 2: Q&A (After Pairing)</h2>
+            <p class="goal">Goal: Missy asks jaka a question and gets a reply</p>
+        </div>
+
+        <div class="prereq">
+            <h4>Prerequisites</h4>
+            <ul>
+                <li>Missy and jaka are already paired</li>
+                <li>Both P2P daemons are running</li>
+            </ul>
+        </div>
+
+        <h3>Flow Diagram</h3>
+        <div class="diagram">
+<span class="missy">┌─────────────────┐</span>                              <span class="jaka">┌─────────────────┐</span>
+<span class="missy">│ "Ask jaka when  │</span>                              <span class="jaka">│                 │</span>
+<span class="missy">│  he's free"     │</span>                              <span class="jaka">│                 │</span>
+<span class="missy">└────────┬────────┘</span>                              <span class="jaka">└─────────────────┘</span>
+         │
+         ▼
+<span class="missy">┌─────────────────┐</span>
+<span class="missy">│ Missy's Agent   │</span>
+<span class="missy">│ 1. Look up jaka │</span>
+<span class="missy">│ 2. Create query │</span>
+<span class="missy">│    thread:abc123│</span>
+<span class="missy">│ 3. oc-tor-net-  │</span>
+<span class="missy">│    send.py      │</span>
+<span class="missy">└────────┬────────┘</span>
+         │
+         ▼
+<span class="missy">┌─────────────────┐</span>
+<span class="missy">│ P2P Daemon      │</span>
+<span class="missy">│ Encrypt with    │</span>
+<span class="missy">│ jaka's pubkey   │</span>
+<span class="missy">└────────┬────────┘</span>
+         │ <span class="arrow">Tor network</span>
+         ▼
+<span class="jaka">┌─────────────────┐</span>
+<span class="jaka">│ Jaka's P2P      │</span>
+<span class="jaka">│ 1. Receive      │</span>
+<span class="jaka">│ 2. Decrypt      │</span>
+<span class="jaka">│ 3. Verify sig   │</span>
+<span class="jaka">│ 4. Store inbox  │</span>
+<span class="jaka">│ 5. WEBHOOK      │</span>
+<span class="jaka">└────────┬────────┘</span>
+         │
+         ▼
+<span class="jaka">┌─────────────────┐</span>
+<span class="jaka">│ Jaka's Agent    │</span>
+<span class="jaka">│ 1. Poll finds   │</span>
+<span class="jaka">│    notification │</span>
+<span class="jaka">│ 2. Ask user:    │</span>
+<span class="jaka">│    "Missy asks  │</span>
+<span class="jaka">│     when free"  │</span>
+<span class="jaka">└────────┬────────┘</span>
+         │
+<span class="missy">│        │</span> <span class="result">"Thursday"</span>
+<span class="missy">│        ▼</span>
+<span class="missy">│       </span><span class="jaka">┌─────────────────┐</span>
+<span class="missy">│       </span><span class="jaka">│ Create response │</span>
+<span class="missy">│       </span><span class="jaka">│ thread:abc123   │</span>
+<span class="missy">│       </span><span class="jaka">└────────┬────────┘</span>
+<span class="missy">│        │</span> <span class="arrow">Reply via Tor</span>
+<span class="missy">│◄───────┘</span>
+<span class="missy">▼</span>
+<span class="missy">┌─────────────────┐</span>
+<span class="missy">│ Missy's P2P     │</span>
+<span class="missy">│ Decrypt, notify │</span>
+<span class="missy">└────────┬────────┘</span>
+         │
+         ▼
+<span class="missy">┌─────────────────┐</span>
+<span class="missy">│ Missy's Agent   │</span>
+<span class="missy">│ "Jaka is free   │</span>
+<span class="missy">│  Thursday"      │</span>
+<span class="missy">└────────┬────────┘</span>
+         │
+    <span class="result">"Confirm 7pm"</span></div>
+
+        <h3>Key Differences</h3>
+        <table class="comparison">
+            <tr>
+                <th>Aspect</th>
+                <th>Pairing</th>
+                <th>Q&A</th>
+            </tr>
+            <tr>
+                <td>Goal</td>
+                <td>Become buddies</td>
+                <td>Exchange information</td>
+            </tr>
+            <tr>
+                <td>Prerequisite</td>
+                <td>Have .onion address</td>
+                <td>Already paired</td>
+            </tr>
+            <tr>
+                <td>Initiated by</td>
+                <td>Either (shares invite)</td>
+                <td>Either (asks question)</td>
+            </tr>
+            <tr>
+                <td>Message type</td>
+                <td>Handshake</td>
+                <td>Query / Response</td>
+            </tr>
+            <tr>
+                <td>Thread ID</td>
+                <td>None (one-time)</td>
+                <td>Same across messages</td>
+            </tr>
+            <tr>
+                <td>Direction</td>
+                <td>One-way (add to peers)</td>
+                <td>Two-way conversation</td>
+            </tr>
+        </table>
+
+    </div>
+</body>
+</html>
