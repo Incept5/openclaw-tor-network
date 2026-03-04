@@ -11,6 +11,7 @@ from tor_manager import TorManager
 from server import MessageServer
 from peer import PeerManager
 from protocol import MessageProtocol
+from webhook import OpenClawWebhook
 
 
 class P2PAgent:
@@ -62,6 +63,10 @@ class P2PAgent:
             data_dir=str(self.config_dir),
             socks_proxy=self.tor.get_socks_proxy()
         )
+        
+        # 5. Initialize webhook for OpenClaw notification
+        print("Initializing OpenClaw webhook...")
+        self.webhook = OpenClawWebhook()
         
         self._running = True
         
@@ -186,6 +191,14 @@ class P2PAgent:
             print(f"  From: {sender_address}")
             print(f"  Type: {decrypted.get('type')}")
             print(f"  Content: {decrypted.get('content')}")
+            
+            # Notify OpenClaw via webhook
+            print("  Notifying OpenClaw...")
+            notified = self.webhook.notify_new_message(decrypted, sender_address)
+            if notified:
+                print("  ✓ OpenClaw notified")
+            else:
+                print("  ⚠ OpenClaw notification failed (message still saved)")
         else:
             print("  Failed to decrypt")
     
