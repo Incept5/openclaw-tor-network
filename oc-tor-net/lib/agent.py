@@ -249,6 +249,7 @@ class P2PAgent:
         agent_log("Decryption SUCCESS")
         msg_type = decrypted.get('type')
         content = decrypted.get('content', {})
+        agent_log(f"Decrypted msg_type={msg_type}, content_keys={list(content.keys())}")
         
         # Auto-add peer on any valid message from unknown sender
         agent_log(f"Checking auto-add: peer={peer is not None}, msg_type={msg_type}")
