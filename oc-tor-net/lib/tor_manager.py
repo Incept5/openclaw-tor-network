@@ -25,9 +25,6 @@ class TorManager:
         self.tor_process = None
         self.controller = None
         self._onion_address: Optional[str] = None
-        
-        # Register cleanup
-        atexit.register(self.stop)
     
     def is_running(self) -> bool:
         """Check if Tor is already running for this data dir"""
