@@ -41,18 +41,8 @@ class Logger:
 
 logger = Logger(log_file)
 
-# Redirect stdout and stderr to logger
-class StreamToLogger:
-    def __init__(self, logger):
-        self.logger = logger
-    def write(self, message):
-        if message.strip():
-            self.logger.log(message.strip())
-    def flush(self):
-        pass
-
-sys.stdout = StreamToLogger(logger)
-sys.stderr = StreamToLogger(logger)
+# Note: stdout redirection removed to avoid recursion
+# All logging goes through logger.log() explicitly
 
 logger.log("=== Daemon starting ===")
 
