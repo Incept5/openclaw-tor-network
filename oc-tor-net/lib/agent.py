@@ -188,11 +188,15 @@ class P2PAgent:
         
         # Decrypt
         from nacl.signing import VerifyKey
+        from nacl.public import PrivateKey
         import base64
+        import hashlib
         
-        # Convert Ed25519 signing key to Curve25519 private key for encryption
-        # This is the proper way to derive encryption keys from signing keys
-        encryption_private = self.identity.signing_key.to_curve25519_private_key()
+        # Derive Curve25519 private key from Ed25519 signing key
+        # Use hash of seed to ensure deterministic, cross-platform result
+        ed25519_seed = bytes(self.identity.signing_key)[:32]
+        curve25519_seed = hashlib.sha256(ed25519_seed + b'curve25519').digest()
+        encryption_private = PrivateKey(curve25519_seed)
         
         sender_verify_key = VerifyKey(base64.b64decode(sender_pubkey_b64))
         

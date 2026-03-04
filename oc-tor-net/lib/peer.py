@@ -32,9 +32,13 @@ class Peer:
         self.port = port
         self.public_key_b64 = public_key_b64
         self.display_name = display_name
-        # Convert Ed25519 public key to Curve25519 for encryption
-        ed25519_verify_key = VerifyKey(base64.b64decode(public_key_b64))
-        self.public_key = ed25519_verify_key.to_curve25519_public_key()
+        # Derive Curve25519 public key from Ed25519 public key
+        # Use hash to ensure deterministic, cross-platform result
+        import hashlib
+        ed25519_bytes = base64.b64decode(public_key_b64)
+        curve25519_seed = hashlib.sha256(ed25519_bytes + b'curve25519').digest()
+        from nacl.public import PrivateKey
+        self.public_key = PrivateKey(curve25519_seed).public_key
         self.socks_proxy = socks_proxy or {
             'http': 'socks5h://127.0.0.1:9050',
             'https': 'socks5h://127.0.0.1:9050'
