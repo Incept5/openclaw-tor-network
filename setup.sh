@@ -125,7 +125,7 @@ install_skill() {
 start_agent() {
     log_info "Starting oc-tor-net agent..."
     
-    cd "$REPO_DIR/tools"
+    cd "$REPO_DIR/oc-tor-net/tools"
     
     # Check if already running
     if pgrep -f "oc-tor-net-start.py" > /dev/null; then
@@ -155,7 +155,7 @@ start_agent() {
 generate_invite() {
     log_info "Generating invite code..."
     
-    cd "$REPO_DIR/tools"
+    cd "$REPO_DIR/oc-tor-net/tools"
     python3 oc-tor-net-invite.py
 }
 

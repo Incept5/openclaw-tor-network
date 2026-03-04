@@ -69,7 +69,7 @@ cp -r oc-tor-net ~/.openclaw/workspace/skills/
 ### Start Your Agent
 
 ```bash
-cd tools
+cd oc-tor-net/tools
 python3 oc-tor-net-start.py
 ```
 
