@@ -188,14 +188,12 @@ class P2PAgent:
         if not peer:
             print(f"  Unknown sender: {sender_address}")
             print("  Will attempt auto-add from handshake content")
-            # Don't return - try to decrypt first, then auto-add if it's a handshake
         
         # Decrypt using separate encryption key
         from nacl.signing import VerifyKey
         import base64
         
         encryption_private = self.identity.encryption_key
-        
         sender_verify_key = VerifyKey(base64.b64decode(sender_pubkey_b64))
         
         print(f"  [DEBUG] Attempting decryption...")
@@ -208,81 +206,59 @@ class P2PAgent:
             sender_verify_key
         )
         
-        else:
+        if not decrypted:
             print(f"  [DEBUG] Decryption FAILED - check keys match")
-            msg_type = decrypted.get('type')
-            content = decrypted.get('content', {})
-            
-            # Auto-add peer on any valid message from unknown sender
-            if not peer:
-                try:
-                    print(f"  Auto-adding peer from message...")
-                    
-                    # Get sender info from message (all messages now include this)
-                    sender_info = content.get('sender_info', {})
-                    
-                    # If not in content, check if it's a handshake
-                    if not sender_info and msg_type == 'handshake':
-                        sender_info = {
-                            'display_name': content.get('display_name', 'Anonymous Agent'),
-                            'onion': content.get('onion'),
-                            'port': content.get('port', 80)
-                        }
-                    
-                    display_name = sender_info.get('display_name', 'Anonymous Agent')
-                    onion = sender_info.get('onion')
-                    port = sender_info.get('port', 80)
-                    
-                    if not onion:
-                        print(f"  ⚠ Cannot auto-add: no onion address in message")
-                        print(f"  Message from {sender_address} saved, but you cannot reply")
-                        # Still process the message
-                    else:
-                        peer = self.peers.add_peer_from_handshake({
-                            'display_name': display_name,
-                            'onion': onion,
-                            'port': port
-                        }, sender_pubkey_b64)
-                        is_new_peer = True
-                        print(f"  ✓ Added: {peer.get_display_label()}")
-                        
-                        # Notify user that pairing is complete (recipient side)
-                        print("  Notifying user of new peer...")
-                        notified = self.webhook.notify_pairing_complete(
-                            peer.display_name,
-                            peer.address,
-                            is_initiator=False
-                        )
-                        if notified:
-                            print(f"  ✓ User notified: New peer {peer.display_name}")
-                        
-                        # Send handshake back so they can add us too
-                        print(f"  Sending handshake response...")
-                        response_handshake = MessageProtocol.create_handshake(
-                            self.identity,
-                            self._onion_address,
-                            port=80,
-                            encryption_pubkey_b64=self.identity.get_encryption_pubkey_b64()
-                        )
-                        success = self.peers.send_to_peer(peer.address, response_handshake)
-                        if success:
-                            print(f"  ✓ Handshake response sent")
-                except Exception as e:
-                    print(f"  ✗ Failed to auto-add: {e}")
+            return
+        
+        print(f"  [DEBUG] Decryption SUCCESS")
+        msg_type = decrypted.get('type')
+        content = decrypted.get('content', {})
+        
+        # Auto-add peer on any valid message from unknown sender
+        if not peer:
+            try:
+                print(f"  Auto-adding peer from message...")
+                
+                # Get sender info from message (all messages now include this)
+                sender_info = content.get('sender_info', {})
+                
+                # If not in content, check if it's a handshake
+                if not sender_info and msg_type == 'handshake':
+                    sender_info = {
+                        'display_name': content.get('display_name', 'Anonymous Agent'),
+                        'onion': content.get('onion'),
+                        'port': content.get('port', 80)
+                    }
+                
+                display_name = sender_info.get('display_name', 'Anonymous Agent')
+                onion = sender_info.get('onion')
+                port = sender_info.get('port', 80)
+                
+                if not onion:
+                    print(f"  ⚠ Cannot auto-add: no onion address in message")
+                    print(f"  Message from {sender_address} saved, but you cannot reply")
                     return
-            
-            if not peer:
-                print(f"  Cannot process: unknown sender and not a handshake")
-                return
-            
-            print(f"  From: {peer.get_display_label()}")
-            print(f"  Type: {msg_type}")
-            print(f"  Content: {content}")
-            
-            # If it's a handshake from an existing peer, send handshake back
-            # This ensures both sides have each other's info
-            if msg_type == 'handshake' and not is_new_peer:
-                print(f"  Handshake from existing peer, sending response...")
+                
+                peer = self.peers.add_peer_from_handshake({
+                    'display_name': display_name,
+                    'onion': onion,
+                    'port': port
+                }, sender_pubkey_b64)
+                is_new_peer = True
+                print(f"  ✓ Added: {peer.get_display_label()}")
+                
+                # Notify user that pairing is complete (recipient side)
+                print("  Notifying user of new peer...")
+                notified = self.webhook.notify_pairing_complete(
+                    peer.display_name,
+                    peer.address,
+                    is_initiator=False
+                )
+                if notified:
+                    print(f"  ✓ User notified: New peer {peer.display_name}")
+                
+                # Send handshake back so they can add us too
+                print(f"  Sending handshake response...")
                 response_handshake = MessageProtocol.create_handshake(
                     self.identity,
                     self._onion_address,
@@ -291,22 +267,45 @@ class P2PAgent:
                 )
                 success = self.peers.send_to_peer(peer.address, response_handshake)
                 if success:
-                    print(f"  ✓ Handshake response sent to {peer.display_name}")
-                else:
-                    print(f"  ⚠ Failed to send handshake response")
-            
-            if is_new_peer:
-                print(f"  🎉 New peer! You can now reply to {peer.display_name}")
-            
-            # Notify OpenClaw via webhook
-            print("  Notifying OpenClaw...")
-            notified = self.webhook.notify_new_message(decrypted, sender_address)
-            if notified:
-                print("  ✓ OpenClaw notified")
+                    print(f"  ✓ Handshake response sent")
+            except Exception as e:
+                print(f"  ✗ Failed to auto-add: {e}")
+                return
+        
+        if not peer:
+            print(f"  Cannot process: unknown sender and not a handshake")
+            return
+        
+        print(f"  From: {peer.get_display_label()}")
+        print(f"  Type: {msg_type}")
+        print(f"  Content: {content}")
+        
+        # If it's a handshake from an existing peer, send handshake back
+        # This ensures both sides have each other's info
+        if msg_type == 'handshake' and not is_new_peer:
+            print(f"  Handshake from existing peer, sending response...")
+            response_handshake = MessageProtocol.create_handshake(
+                self.identity,
+                self._onion_address,
+                port=80,
+                encryption_pubkey_b64=self.identity.get_encryption_pubkey_b64()
+            )
+            success = self.peers.send_to_peer(peer.address, response_handshake)
+            if success:
+                print(f"  ✓ Handshake response sent to {peer.display_name}")
             else:
-                print("  ⚠ OpenClaw notification failed (message still saved)")
+                print(f"  ⚠ Failed to send handshake response")
+        
+        if is_new_peer:
+            print(f"  🎉 New peer! You can now reply to {peer.display_name}")
+        
+        # Notify OpenClaw via webhook
+        print("  Notifying OpenClaw...")
+        notified = self.webhook.notify_new_message(decrypted, sender_address)
+        if notified:
+            print("  ✓ OpenClaw notified")
         else:
-            print("  Failed to decrypt")
+            print("  ⚠ OpenClaw notification failed (message still saved)")
     
     def __enter__(self):
         self.start()
