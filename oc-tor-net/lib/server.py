@@ -7,6 +7,18 @@ import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from typing import Callable, Dict
+from datetime import datetime
+
+
+def debug_log(msg):
+    """Write debug message to log file directly"""
+    try:
+        log_file = Path.home() / ".openclaw" / "p2p" / "daemon.log"
+        with open(log_file, 'a') as f:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            f.write(f"[{timestamp}] [SERVER] {msg}\n")
+    except:
+        pass
 
 
 class MessageHandler(BaseHTTPRequestHandler):
@@ -39,26 +51,24 @@ class MessageHandler(BaseHTTPRequestHandler):
             
             try:
                 message = json.loads(body)
-                print(f"[DEBUG] Server received message: {list(message.keys())}")
+                debug_log(f"Received message: {list(message.keys())}")
                 
                 # Store in inbox
                 if MessageHandler.inbox_dir:
                     self._store_message(message)
-                    print(f"[DEBUG] Message stored to inbox")
+                    debug_log("Message stored to inbox")
                 
                 # Notify callback
-                print(f"[DEBUG] Checking callback: {MessageHandler.message_callback}")
+                debug_log(f"Checking callback: {MessageHandler.message_callback is not None}")
                 if MessageHandler.message_callback:
-                    print(f"[DEBUG] Calling message callback...")
+                    debug_log("Calling message callback...")
                     try:
                         MessageHandler.message_callback(message)
-                        print(f"[DEBUG] Callback completed successfully")
+                        debug_log("Callback completed successfully")
                     except Exception as e:
-                        print(f"[DEBUG] Callback FAILED: {e}")
-                        import traceback
-                        traceback.print_exc()
+                        debug_log(f"Callback FAILED: {e}")
                 else:
-                    print(f"[DEBUG] No callback registered!")
+                    debug_log("No callback registered!")
                 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
