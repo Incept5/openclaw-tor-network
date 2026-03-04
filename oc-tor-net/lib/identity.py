@@ -33,9 +33,20 @@ class Identity:
             seed = base64.b64decode(data['seed'])
             self.signing_key = SigningKey(seed)
             self.verify_key = self.signing_key.verify_key
+            # Load or generate encryption key
+            if 'encryption_seed' in data:
+                from nacl.public import PrivateKey
+                enc_seed = base64.b64decode(data['encryption_seed'])
+                self.encryption_key = PrivateKey(enc_seed)
+            else:
+                from nacl.public import PrivateKey
+                self.encryption_key = PrivateKey.generate()
+                self._save()
         else:
             self.signing_key = SigningKey.generate()
             self.verify_key = self.signing_key.verify_key
+            from nacl.public import PrivateKey
+            self.encryption_key = PrivateKey.generate()
             self._save()
     
     def _save(self):
@@ -43,6 +54,8 @@ class Identity:
         data = {
             'seed': base64.b64encode(bytes(self.signing_key)).decode(),
             'public_key': self.get_public_key_b64(),
+            'encryption_seed': base64.b64encode(bytes(self.encryption_key)).decode(),
+            'encryption_public_key': base64.b64encode(bytes(self.encryption_key.public_key)).decode(),
             'created': datetime.utcnow().isoformat()
         }
         with open(self.keys_file, 'w') as f:
@@ -77,7 +90,11 @@ class Identity:
     def get_public_key_b64(self) -> str:
         """Get base64-encoded public key"""
         return base64.b64encode(bytes(self.verify_key)).decode()
-    
+
+    def get_encryption_pubkey_b64(self) -> str:
+        """Get base64-encoded Curve25519 encryption public key"""
+        return base64.b64encode(bytes(self.encryption_key.public_key)).decode()
+
     def get_address(self) -> str:
         """Get SSB-style address: @pubkey.ed25519"""
         return f"@{self.get_public_key_b64()}.ed25519"

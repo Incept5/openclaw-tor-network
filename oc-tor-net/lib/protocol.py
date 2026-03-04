@@ -103,16 +103,19 @@ class MessageProtocol:
         return msg
     
     @staticmethod
-    def create_handshake(identity, onion_address: str, port: int = 80) -> dict:
+    def create_handshake(identity, onion_address: str, port: int = 80, encryption_pubkey_b64: str = None) -> dict:
         """Create initial handshake message with full identity info for auto-add"""
-        return MessageProtocol.create_message('handshake', {
+        content = {
             'address': identity.get_address(),
             'display_name': identity.get_display_name(),
             'onion': onion_address,
             'port': port,
             'agent': 'openclaw',
             'version': '1.0.0'
-        })
+        }
+        if encryption_pubkey_b64:
+            content['encryption_pubkey'] = encryption_pubkey_b64
+        return MessageProtocol.create_message('handshake', content)
     
     @staticmethod
     def create_query(query_type: str, params: dict) -> dict:

@@ -116,7 +116,8 @@ class P2PAgent:
             handshake = MessageProtocol.create_handshake(
                 self.identity,
                 self._onion_address,
-                port=80
+                port=80,
+                encryption_pubkey_b64=self.identity.get_encryption_pubkey_b64()
             )
             success = self.peers.send_to_peer(peer.address, handshake)
             
@@ -186,17 +187,11 @@ class P2PAgent:
             print("  Will attempt auto-add from handshake content")
             # Don't return - try to decrypt first, then auto-add if it's a handshake
         
-        # Decrypt
+        # Decrypt using separate encryption key
         from nacl.signing import VerifyKey
-        from nacl.public import PrivateKey
         import base64
-        import hashlib
         
-        # Derive Curve25519 private key from Ed25519 signing key
-        # Use hash of seed to ensure deterministic, cross-platform result
-        ed25519_seed = bytes(self.identity.signing_key)[:32]
-        curve25519_seed = hashlib.sha256(ed25519_seed + b'curve25519').digest()
-        encryption_private = PrivateKey(curve25519_seed)
+        encryption_private = self.identity.encryption_key
         
         sender_verify_key = VerifyKey(base64.b64decode(sender_pubkey_b64))
         
@@ -258,7 +253,8 @@ class P2PAgent:
                         response_handshake = MessageProtocol.create_handshake(
                             self.identity,
                             self._onion_address,
-                            port=80
+                            port=80,
+                            encryption_pubkey_b64=self.identity.get_encryption_pubkey_b64()
                         )
                         success = self.peers.send_to_peer(peer.address, response_handshake)
                         if success:
@@ -282,7 +278,8 @@ class P2PAgent:
                 response_handshake = MessageProtocol.create_handshake(
                     self.identity,
                     self._onion_address,
-                    port=80
+                    port=80,
+                    encryption_pubkey_b64=self.identity.get_encryption_pubkey_b64()
                 )
                 success = self.peers.send_to_peer(peer.address, response_handshake)
                 if success:

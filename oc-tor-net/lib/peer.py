@@ -32,13 +32,8 @@ class Peer:
         self.port = port
         self.public_key_b64 = public_key_b64
         self.display_name = display_name
-        # Derive Curve25519 public key from Ed25519 public key
-        # Use hash to ensure deterministic, cross-platform result
-        import hashlib
-        ed25519_bytes = base64.b64decode(public_key_b64)
-        curve25519_seed = hashlib.sha256(ed25519_bytes + b'curve25519').digest()
-        from nacl.public import PrivateKey
-        self.public_key = PrivateKey(curve25519_seed).public_key
+        # Load Curve25519 public key directly (for encryption)
+        self.public_key = PublicKey(base64.b64decode(public_key_b64))
         self.socks_proxy = socks_proxy or {
             'http': 'socks5h://127.0.0.1:9050',
             'https': 'socks5h://127.0.0.1:9050'
@@ -182,12 +177,15 @@ class PeerManager:
         if not onion:
             raise ValueError("Handshake missing onion address")
 
+        # Use encryption_pubkey from handshake if available, otherwise fall back to derivation
+        encryption_pubkey_b64 = handshake_data.get('encryption_pubkey', sender_pubkey_b64)
+
         # Create peer
         peer = Peer(
             address=address,
             onion=onion,
             port=port,
-            public_key_b64=sender_pubkey_b64,
+            public_key_b64=encryption_pubkey_b64,
             display_name=display_name,
             socks_proxy=self.socks_proxy
         )
