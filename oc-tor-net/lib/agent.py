@@ -236,6 +236,21 @@ class P2PAgent:
             print(f"  Type: {msg_type}")
             print(f"  Content: {content}")
             
+            # If it's a handshake from an existing peer, send handshake back
+            # This ensures both sides have each other's info
+            if msg_type == 'handshake' and not is_new_peer:
+                print(f"  Handshake from existing peer, sending response...")
+                response_handshake = MessageProtocol.create_handshake(
+                    self.identity,
+                    self._onion_address,
+                    port=80
+                )
+                success = self.peers.send_to_peer(peer.address, response_handshake)
+                if success:
+                    print(f"  ✓ Handshake response sent to {peer.display_name}")
+                else:
+                    print(f"  ⚠ Failed to send handshake response")
+            
             if is_new_peer:
                 print(f"  🎉 New peer! You can now reply to {peer.display_name}")
             
