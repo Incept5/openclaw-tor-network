@@ -52,19 +52,26 @@ pip install -r requirements.txt
 
 ## Quick Start
 
-### 1. Start the P2P Daemon
+### 1. Start the P2P Daemon (REQUIRED — must stay running)
 
-This runs continuously in the background:
+**The daemon is a permanently required background service.** All other tools depend on it.
+It provides Tor connectivity (SOCKS proxy), the HTTP server for incoming messages,
+and automatic peer handshaking. Without it, messages cannot be sent or received.
 
 ```bash
 cd tools
 python3 oc-tor-net-start.py
 ```
 
-Keep this running. It will:
-- Start Tor hidden service
-- Listen for incoming P2P messages
-- Notify OpenClaw when messages arrive
+**This process MUST keep running.** If it dies, all P2P communication stops.
+All CLI tools will check for the daemon and error if it's not running.
+
+It provides:
+- Tor hidden service (.onion address)
+- SOCKS proxy for outbound connections
+- HTTP server for incoming P2P messages
+- Automatic peer discovery via handshakes
+- OpenClaw webhook notifications
 
 ### 2. Generate Your Invite
 

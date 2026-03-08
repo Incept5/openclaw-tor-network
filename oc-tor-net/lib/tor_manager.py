@@ -2,6 +2,7 @@
 Tor hidden service management
 """
 import os
+import json
 import time
 import atexit
 import tempfile
@@ -96,7 +97,10 @@ class TorManager:
         
         self._onion_address = self._read_hostname()
         print(f"Hidden service ready: {self._onion_address}")
-        
+
+        # Write daemon config so CLI tools can find SOCKS port, onion, etc.
+        self._write_daemon_config(socks_port)
+
         return self._onion_address
     
     def _read_hostname(self) -> str:
@@ -119,6 +123,51 @@ class TorManager:
         except RuntimeError:
             return None
     
+    def _write_daemon_config(self, socks_port: int):
+        """Write daemon.json so CLI tools can discover ports and onion address."""
+        config_file = self.data_dir.parent / "daemon.json"
+        config = {
+            'socks_port': socks_port,
+            'service_port': self.service_port,
+            'onion_address': self._onion_address,
+            'pid': self.tor_process.pid if self.tor_process else None,
+            'data_dir': str(self.data_dir)
+        }
+        with open(config_file, 'w') as f:
+            json.dump(config, f, indent=2)
+
+    def _remove_daemon_config(self):
+        """Remove daemon.json on shutdown."""
+        config_file = self.data_dir.parent / "daemon.json"
+        if config_file.exists():
+            try:
+                config_file.unlink()
+            except OSError:
+                pass
+
+    @staticmethod
+    def check_daemon(config_dir: str = None) -> dict:
+        """
+        Check if the daemon is running. Returns status dict.
+        CLI tools should call this before attempting network operations.
+        """
+        if config_dir is None:
+            config_dir = os.path.expanduser("~/.openclaw/p2p")
+        config_file = Path(config_dir) / "daemon.json"
+        if not config_file.exists():
+            return {'running': False, 'error': 'No daemon.json found. Run oc-tor-net-start.py first.'}
+        try:
+            with open(config_file) as f:
+                config = json.load(f)
+            pid = config.get('pid')
+            if pid:
+                os.kill(pid, 0)  # Check if process is alive
+            return {'running': True, **config}
+        except (OSError, ProcessLookupError):
+            return {'running': False, 'error': 'Daemon process is not running. Restart with oc-tor-net-start.py.'}
+        except (json.JSONDecodeError, KeyError) as e:
+            return {'running': False, 'error': f'Corrupt daemon.json: {e}'}
+
     def get_socks_proxy(self) -> dict:
         """Get SOCKS proxy config for requests"""
         return {
@@ -128,6 +177,7 @@ class TorManager:
     
     def stop(self):
         """Stop Tor process"""
+        self._remove_daemon_config()
         if self.controller:
             try:
                 self.controller.close()

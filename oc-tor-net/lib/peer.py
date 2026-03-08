@@ -15,6 +15,23 @@ from identity import Identity
 from protocol import MessageProtocol
 
 
+def _default_socks_proxy() -> dict:
+    """Read SOCKS proxy config from daemon.json, fall back to daemon default port."""
+    daemon_config = Path.home() / ".openclaw" / "p2p" / "daemon.json"
+    socks_port = 9060  # Must match TorManager default
+    if daemon_config.exists():
+        try:
+            with open(daemon_config) as f:
+                config = json.load(f)
+            socks_port = config.get('socks_port', 9060)
+        except (json.JSONDecodeError, OSError):
+            pass
+    return {
+        'http': f'socks5h://127.0.0.1:{socks_port}',
+        'https': f'socks5h://127.0.0.1:{socks_port}'
+    }
+
+
 class Peer:
     """Represents a connected peer"""
     
@@ -34,10 +51,7 @@ class Peer:
         self.display_name = display_name
         # Load Curve25519 public key directly (for encryption)
         self.public_key = PublicKey(base64.b64decode(public_key_b64))
-        self.socks_proxy = socks_proxy or {
-            'http': 'socks5h://127.0.0.1:9050',
-            'https': 'socks5h://127.0.0.1:9050'
-        }
+        self.socks_proxy = socks_proxy or _default_socks_proxy()
         self.last_seen = None
         self.handshake_complete = False
     
@@ -110,6 +124,7 @@ class PeerManager:
                     onion=info['onion'],
                     port=info['port'],
                     public_key_b64=info['public_key'],
+                    display_name=info.get('display_name', 'Anonymous Agent'),
                     socks_proxy=self.socks_proxy
                 )
     
@@ -142,8 +157,14 @@ class PeerManager:
         if address in self.peers:
             return self.peers[address]
         
-        # Use encryption_pubkey from invite if available, otherwise fall back to pubkey
-        encryption_pubkey = invite.get('encryption_pubkey', invite['pubkey'])
+        # Use encryption_pubkey from invite -- this MUST be a Curve25519 key.
+        # The signing pubkey (Ed25519) is NOT compatible with NaCl box encryption.
+        encryption_pubkey = invite.get('encryption_pubkey')
+        if not encryption_pubkey:
+            raise ValueError(
+                "Invite is missing encryption_pubkey (Curve25519 key). "
+                "This may be a legacy v1 invite. Ask the peer to regenerate their invite."
+            )
         
         # Create peer
         peer = Peer(
@@ -180,8 +201,14 @@ class PeerManager:
         if not onion:
             raise ValueError("Handshake missing onion address")
 
-        # Use encryption_pubkey from handshake if available, otherwise fall back to derivation
-        encryption_pubkey_b64 = handshake_data.get('encryption_pubkey', sender_pubkey_b64)
+        # Use encryption_pubkey from handshake -- this MUST be a Curve25519 key.
+        # The sender_pubkey_b64 is Ed25519 (signing) and NOT compatible with NaCl box.
+        encryption_pubkey_b64 = handshake_data.get('encryption_pubkey')
+        if not encryption_pubkey_b64:
+            raise ValueError(
+                "Handshake is missing encryption_pubkey (Curve25519 key). "
+                "The peer may be running an outdated version."
+            )
         
         # Debug logging
         from pathlib import Path
