@@ -201,20 +201,10 @@ class P2PAgent:
             print(f"  Unknown sender: {sender_address}")
             print("  Will attempt auto-add from handshake content")
         
-        # For unknown peers, check if sender_encryption_pubkey is in outer envelope (handshake)
-        sender_encryption_pubkey_b64 = encrypted_message.get('sender_encryption_pubkey')
-        if not peer and sender_encryption_pubkey_b64:
-            agent_log(f"Found sender_encryption_pubkey in envelope: {sender_encryption_pubkey_b64[:30]}...")
-            # Create temporary peer with this key for decryption
-            from nacl.public import PublicKey
-            temp_peer_key = PublicKey(base64.b64decode(sender_encryption_pubkey_b64))
-        else:
-            temp_peer_key = None
-        
-        # Decrypt using separate encryption key
-        from nacl.signing import VerifyKey
+        # Decrypt using our Curve25519 encryption key
         import base64
-        
+        from nacl.signing import VerifyKey
+
         encryption_private = self.identity.encryption_key
         sender_verify_key = VerifyKey(base64.b64decode(sender_pubkey_b64))
         
