@@ -5,6 +5,7 @@ import json
 import os
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from socketserver import ThreadingMixIn
 from pathlib import Path
 from typing import Callable, Dict
 from datetime import datetime
@@ -97,6 +98,15 @@ class MessageHandler(BaseHTTPRequestHandler):
             json.dump(message, f, indent=2)
 
 
+class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+    """HTTP server that handles each request in a new thread.
+
+    Prevents the callback (which may send messages via Tor, taking seconds)
+    from blocking the server and making it unresponsive to new requests.
+    """
+    daemon_threads = True
+
+
 class MessageServer:
     """HTTP server for receiving P2P messages"""
     
@@ -116,7 +126,7 @@ class MessageServer:
         """Start the message server in a background thread"""
         MessageHandler.message_callback = message_callback
         
-        self.server = HTTPServer(('127.0.0.1', self.port), MessageHandler)
+        self.server = ThreadingHTTPServer(('127.0.0.1', self.port), MessageHandler)
         
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
