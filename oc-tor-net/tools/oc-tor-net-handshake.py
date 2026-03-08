@@ -4,14 +4,17 @@ Send a handshake to a peer (for initial pairing)
 """
 import sys
 import json
+import os
 
-sys.path.insert(0, '../lib')
-sys.path.insert(0, './lib')
+script_dir = os.path.dirname(os.path.abspath(__file__))
+lib_dir = os.path.join(script_dir, '..', 'lib')
+sys.path.insert(0, lib_dir)
 
 try:
     from identity import Identity
     from peer import Peer, PeerManager
     from protocol import MessageProtocol
+    from tor_manager import TorManager
 except ImportError as e:
     print(f"Error: {e}")
     sys.exit(1)
@@ -28,18 +31,25 @@ def main(peer_address: str):
     if not identity_file.exists():
         print("Error: No identity found. Run oc-tor-net-start.py first.")
         sys.exit(1)
-    
+
+    # Check daemon is running
+    daemon_status = TorManager.check_daemon(str(config_dir))
+    if not daemon_status['running']:
+        print(f"Error: {daemon_status['error']}")
+        sys.exit(1)
+
     # Load identity
     identity = Identity(str(config_dir))
-    
-    # Get our onion address
-    tor_hostname = config_dir / 'tor' / 'hidden_service' / 'hostname'
-    if not tor_hostname.exists():
-        print("Error: No Tor hidden service found. Is the daemon running?")
-        sys.exit(1)
-    
-    with open(tor_hostname) as f:
-        onion = f.read().strip()
+
+    # Get our onion address from daemon config
+    onion = daemon_status.get('onion_address')
+    if not onion:
+        tor_hostname = config_dir / 'tor' / 'hidden_service' / 'hostname'
+        if not tor_hostname.exists():
+            print("Error: No Tor hidden service found. Is the daemon running?")
+            sys.exit(1)
+        with open(tor_hostname) as f:
+            onion = f.read().strip()
     
     # Load peer
     if not peers_file.exists():
@@ -66,12 +76,18 @@ def main(peer_address: str):
     
     peer_info = peers_data[peer_address]
     
-    # Create peer object
+    # Create peer object with daemon's SOCKS port
+    socks_port = daemon_status.get('socks_port', 9060)
+    socks_proxy = {
+        'http': f'socks5h://127.0.0.1:{socks_port}',
+        'https': f'socks5h://127.0.0.1:{socks_port}'
+    }
     peer = Peer(
         address=peer_address,
         onion=peer_info['onion'],
         port=peer_info['port'],
-        public_key_b64=peer_info['public_key']
+        public_key_b64=peer_info['public_key'],
+        socks_proxy=socks_proxy
     )
     
     print(f"Sending handshake to: {peer_address}")

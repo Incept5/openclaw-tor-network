@@ -33,15 +33,23 @@ class Identity:
             seed = base64.b64decode(data['seed'])
             self.signing_key = SigningKey(seed)
             self.verify_key = self.signing_key.verify_key
-            # Load or generate encryption key
+            # Load encryption key, or derive deterministically from Ed25519 seed
             if 'encryption_seed' in data:
                 from nacl.public import PrivateKey
                 enc_seed = base64.b64decode(data['encryption_seed'])
                 self.encryption_key = PrivateKey(enc_seed)
             else:
+                # Derive Curve25519 key from Ed25519 signing key (deterministic).
+                # This ensures legacy identities always get the same encryption key
+                # rather than generating a random one that breaks existing peers.
                 from nacl.public import PrivateKey
-                self.encryption_key = PrivateKey.generate()
+                from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
+                # Ed25519 "sk" in libsodium is the 64-byte seed+pubkey concatenation
+                ed25519_sk = bytes(self.signing_key) + bytes(self.verify_key)
+                curve25519_sk = crypto_sign_ed25519_sk_to_curve25519(ed25519_sk)
+                self.encryption_key = PrivateKey(curve25519_sk)
                 self._save()
+                print("[IDENTITY] Derived encryption key from signing key (legacy identity migrated)")
         else:
             self.signing_key = SigningKey.generate()
             self.verify_key = self.signing_key.verify_key

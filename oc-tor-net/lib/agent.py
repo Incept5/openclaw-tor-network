@@ -220,27 +220,15 @@ class P2PAgent:
         
         agent_log("Attempting decryption...")
         
-        # Try decryption with temp key first (for handshakes from unknown peers)
-        if temp_peer_key:
-            agent_log("Trying decryption with sender_encryption_pubkey from envelope...")
-            decrypted = MessageProtocol.decrypt_message(
-                encrypted_message,
-                encryption_private,
-                sender_verify_key,
-                recipient_public_key=temp_peer_key  # Use sender's claimed encryption key
-            )
-            if decrypted:
-                agent_log("Decryption SUCCESS with envelope key")
-        else:
-            decrypted = None
-        
-        # If that didn't work, try normal decryption
-        if not decrypted:
-            decrypted = MessageProtocol.decrypt_message(
-                encrypted_message,
-                encryption_private,
-                sender_verify_key
-            )
+        # Decrypt using our encryption private key and the ephemeral key in the message.
+        # Note: the sender_encryption_pubkey from the envelope is NOT needed for
+        # decryption -- NaCl box uses (our_private, ephemeral_public) which are both
+        # already available. The envelope key is only useful for peer discovery.
+        decrypted = MessageProtocol.decrypt_message(
+            encrypted_message,
+            encryption_private,
+            sender_verify_key
+        )
         
         if not decrypted:
             agent_log("Decryption FAILED - keys don't match")
