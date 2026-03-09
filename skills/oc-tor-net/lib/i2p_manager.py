@@ -304,15 +304,44 @@ class I2PManager(TransportManager):
             setup_error[0] = e
             setup_done.set()
 
+    MAX_CONCURRENT_STREAMS = 20
+    STREAM_TIMEOUT = 60  # seconds per forwarded stream
+
     async def _accept_loop(self, session_name: str, sam_port: int):
         """Accept incoming I2P streams and forward to local HTTP server."""
         sam = SAMClient(self.DEFAULT_SAM_HOST, sam_port)
+        active_tasks: set = set()
         while True:
             try:
+                # Back-pressure: if at limit, wait for a slot
+                while len(active_tasks) >= self.MAX_CONCURRENT_STREAMS:
+                    done, active_tasks_new = await asyncio.wait(
+                        active_tasks, return_when=asyncio.FIRST_COMPLETED
+                    )
+                    active_tasks = active_tasks_new
+                    # Collect exceptions silently
+                    for t in done:
+                        try:
+                            t.result()
+                        except Exception:
+                            pass
+
                 reader, writer = await sam.stream_accept(session_name)
-                asyncio.ensure_future(
+                task = asyncio.ensure_future(
                     self._forward_stream(reader, writer, '127.0.0.1', self.service_port)
                 )
+                active_tasks.add(task)
+                task.add_done_callback(active_tasks.discard)
+
+                # Reap completed tasks periodically
+                done_tasks = {t for t in active_tasks if t.done()}
+                for t in done_tasks:
+                    active_tasks.discard(t)
+                    try:
+                        t.result()
+                    except Exception:
+                        pass
+
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -324,38 +353,47 @@ class I2PManager(TransportManager):
                     pass
                 await asyncio.sleep(1)
 
-    @staticmethod
-    async def _forward_stream(i2p_reader, i2p_writer, local_host: str, local_port: int):
-        """Forward an incoming I2P stream to the local HTTP server and relay the response back."""
+        # Cleanup remaining tasks on shutdown
+        for t in active_tasks:
+            t.cancel()
+
+    async def _forward_stream(self, i2p_reader, i2p_writer, local_host: str, local_port: int):
+        """Forward an incoming I2P stream to the local HTTP server and relay the response back.
+        Enforces a timeout to prevent zombie connections."""
         try:
-            local_reader, local_writer = await asyncio.open_connection(local_host, local_port)
-
-            async def pipe(src, dst):
+            async with asyncio.timeout(self.STREAM_TIMEOUT):
+                local_reader, local_writer = await asyncio.open_connection(local_host, local_port)
                 try:
-                    while True:
-                        data = await src.read(4096)
-                        if not data:
-                            break
-                        dst.write(data)
-                        await dst.drain()
-                except (asyncio.CancelledError, ConnectionError, OSError):
-                    pass
-                finally:
-                    try:
-                        dst.close()
-                    except:
-                        pass
+                    async def pipe(src, dst):
+                        try:
+                            while True:
+                                data = await src.read(4096)
+                                if not data:
+                                    break
+                                dst.write(data)
+                                await dst.drain()
+                        except (asyncio.CancelledError, ConnectionError, OSError):
+                            pass
 
-            # Bidirectional pipe: I2P stream <-> local HTTP server
-            await asyncio.gather(
-                pipe(i2p_reader, local_writer),
-                pipe(local_reader, i2p_writer)
-            )
+                    await asyncio.gather(
+                        pipe(i2p_reader, local_writer),
+                        pipe(local_reader, i2p_writer)
+                    )
+                finally:
+                    local_writer.close()
+        except (TimeoutError, asyncio.TimeoutError):
+            pass  # Stream exceeded timeout — killed cleanly
         except Exception as e:
             try:
                 log_file = Path.home() / ".openclaw" / "p2p" / "daemon.log"
                 with open(log_file, 'a') as f:
                     f.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] [I2P] forward error: {e}\n")
+            except:
+                pass
+        finally:
+            # Always close the I2P side
+            try:
+                i2p_writer.close()
             except:
                 pass
 
