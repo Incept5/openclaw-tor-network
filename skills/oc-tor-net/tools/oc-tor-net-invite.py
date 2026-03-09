@@ -98,9 +98,25 @@ def main():
     print(f"  'Message from {display_name}' when you send messages")
     print()
     
-    # Generate invite with display name
+    # For I2P, read the full destination (needed for SAM routing)
+    full_destination = None
+    if transport == 'i2p':
+        # Read from destination keys file (daemon.json only has truncated version)
+        dest_keys_file = config_dir / "i2p" / "destination_keys.json"
+        if dest_keys_file.exists():
+            try:
+                with open(dest_keys_file) as f:
+                    dest_keys = json.load(f)
+                full_destination = dest_keys.get('pub')
+            except (json.JSONDecodeError, OSError):
+                pass
+        if not full_destination:
+            print("Warning: Could not read I2P destination keys. Invite will lack full destination.")
+            print("Peers may not be able to connect via SAM.")
+
+    # Generate invite with display name and full destination
     invite = identity.generate_invite(network_address, port=80, display_name=display_name,
-                                      transport=transport)
+                                      transport=transport, full_destination=full_destination)
     invite_code = identity.encode_invite(invite)
     
     print("=" * 60)

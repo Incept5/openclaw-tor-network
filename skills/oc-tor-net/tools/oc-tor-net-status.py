@@ -85,7 +85,15 @@ def main():
     if '--invite' in sys.argv:
         if network_address:
             # Include full I2P destination for SAM routing
-            full_dest = daemon_status.get('destination') if transport == 'i2p' else None
+            full_dest = None
+            if transport == 'i2p':
+                dest_keys_file = config_dir / "i2p" / "destination_keys.json"
+                if dest_keys_file.exists():
+                    try:
+                        with open(dest_keys_file) as f:
+                            full_dest = json.load(f).get('pub')
+                    except (json.JSONDecodeError, OSError):
+                        pass
             invite = identity.generate_invite(
                 network_address, port=80, transport=transport,
                 full_destination=full_dest
@@ -151,7 +159,15 @@ def main():
     if network_address:
         print("Your invite code (share this to let others connect):")
         print()
-        full_dest = daemon_status.get('destination') if transport == 'i2p' else None
+        full_dest = None
+        if transport == 'i2p':
+            dest_keys_file = config_dir / "i2p" / "destination_keys.json"
+            if dest_keys_file.exists():
+                try:
+                    with open(dest_keys_file) as f:
+                        full_dest = json.load(f).get('pub')
+                except (json.JSONDecodeError, OSError):
+                    pass
         invite = identity.generate_invite(
             network_address, port=80, transport=transport,
             full_destination=full_dest

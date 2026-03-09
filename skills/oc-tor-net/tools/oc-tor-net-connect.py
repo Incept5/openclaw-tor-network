@@ -85,23 +85,34 @@ def main(invite_code: str):
         with open(peers_file) as f:
             existing = json.load(f)
         if address in existing:
-            print(f"This peer is already in your contact list.")
+            # Update full_destination if the new invite has it
+            if invite.get('dest') and not existing[address].get('full_destination'):
+                existing[address]['full_destination'] = invite['dest']
+                existing[address]['address'] = network_addr
+                existing[address]['onion'] = network_addr
+                with open(peers_file, 'w') as f:
+                    json.dump(existing, f, indent=2)
+                print(f"Peer updated with full I2P destination.")
+            else:
+                print(f"This peer is already in your contact list.")
             print(f"You can send them messages using:")
             print(f"  python3 oc-tor-net-send.py '{address}' 'Hello!'")
             return
 
     # Create peer entry with Curve25519 encryption key
-    peer_data = {
-        address: {
-            'onion': network_addr,
-            'address': network_addr,
-            'port': invite['port'],
-            'public_key': encryption_pubkey,
-            'display_name': display_name,
-            'transport': peer_transport,
-            'added': invite['ts']
-        }
+    peer_entry = {
+        'onion': network_addr,
+        'address': network_addr,
+        'port': invite['port'],
+        'public_key': encryption_pubkey,
+        'display_name': display_name,
+        'transport': peer_transport,
+        'added': invite['ts']
     }
+    # Include full I2P destination for SAM routing
+    if invite.get('dest'):
+        peer_entry['full_destination'] = invite['dest']
+    peer_data = {address: peer_entry}
 
     # Merge with existing peers
     if peers_file.exists():
