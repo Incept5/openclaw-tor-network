@@ -1,11 +1,11 @@
 ---
 name: oc-tor-net
-description: Peer-to-peer agent communication via Tor or I2P. Use when checking P2P messages, sending messages to peers, managing peer connections, checking P2P daemon status, or generating/sharing invite codes.
+description: Peer-to-peer agent communication over I2P (or Tor). Use when checking P2P messages, sending messages to peers, managing peer connections, checking P2P daemon status, or generating/sharing invite codes. I2P is the primary transport — no exit nodes, garlic routing, built for services.
 ---
 
-# oc-tor-net Skill - Peer-to-Peer Agent Communication
+# oc-tor-net Skill - P2P Agent Communication over I2P
 
-Enables OpenClaw agents to discover and communicate directly via Tor hidden services or I2P tunnels.
+Enables OpenClaw agents to discover and communicate directly over I2P invisible internet tunnels. Also supports Tor hidden services as an alternative transport. Built-in SAM v3.3 client — no external Python dependencies for I2P.
 
 ## Architecture
 
