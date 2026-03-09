@@ -134,8 +134,10 @@ class Identity:
     
     def generate_invite(self, network_address: str, port: int = 80,
                         display_name: str = None, encryption_pubkey: str = None,
-                        transport: str = 'tor') -> dict:
-        """Generate an invite structure"""
+                        transport: str = 'tor', full_destination: str = None) -> dict:
+        """Generate an invite structure.
+        For I2P, full_destination should be the base64 public destination
+        (needed for SAM STREAM CONNECT which can't resolve .b32.i2p)."""
         if display_name is None:
             display_name = self.get_display_name()
 
@@ -157,6 +159,9 @@ class Identity:
             'transport': transport,
             'ts': timestamp
         }
+        # Include full I2P destination for SAM routing
+        if full_destination:
+            payload['dest'] = full_destination
         # Sign the canonical JSON (sort_keys ensures deterministic ordering)
         message = json.dumps(payload, sort_keys=True).encode()
         payload['sig'] = self.sign_b64(message)
@@ -185,7 +190,7 @@ class Identity:
                 invite['sig']
             ]
         else:
-            # oc:v3;transport;pubkey;encryption_pubkey;address:port;name;timestamp;sig
+            # oc:v3;transport;pubkey;encryption_pubkey;address:port;name;timestamp;sig[;dest]
             parts = [
                 'oc:v3',
                 transport,
@@ -196,6 +201,9 @@ class Identity:
                 invite['ts'],
                 invite['sig']
             ]
+            # Append full destination for I2P SAM routing (optional 9th field)
+            if invite.get('dest'):
+                parts.append(invite['dest'])
         return ';'.join(parts)
     
     @staticmethod
@@ -213,8 +221,8 @@ class Identity:
         version_part = parts[0].split(':')[1]
         version = int(version_part.replace('v', ''))
 
-        if version == 3 and len(parts) == 8:
-            # v3 format: oc:v3;transport;pubkey;encryption_pubkey;address:port;name;ts;sig
+        if version == 3 and len(parts) in (8, 9):
+            # v3 format: oc:v3;transport;pubkey;encryption_pubkey;address:port;name;ts;sig[;dest]
             transport = parts[1]
             network_addr = parts[4].rsplit(':', 1)[0]
             # Core payload matches what was signed (same keys as generate_invite)
@@ -229,6 +237,9 @@ class Identity:
                 'ts': parts[6],
                 'sig': parts[7]
             }
+            # Optional full destination (for I2P SAM routing)
+            if len(parts) == 9 and parts[8]:
+                result['dest'] = parts[8]
             return result
         elif len(parts) == 7:
             # v2 format (tor with encryption key): oc:v1;pubkey;encryption_pubkey;onion:port;name;ts;sig

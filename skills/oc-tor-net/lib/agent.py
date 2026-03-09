@@ -83,7 +83,8 @@ class P2PAgent:
         self.peers = PeerManager(
             self.identity,
             data_dir=str(self.config_dir),
-            socks_proxy=self.transport.get_proxy()
+            socks_proxy=self.transport.get_proxy(),
+            transport_manager=self.transport
         )
         # Store network address and transport type in peer manager for sender info
         self.peers.network_address = self._network_address
@@ -126,8 +127,14 @@ class P2PAgent:
         if not self._running:
             raise RuntimeError("P2P agent not started")
 
+        # For I2P, include the full destination so peers can use SAM STREAM CONNECT
+        full_dest = None
+        if self.transport_type == 'i2p' and hasattr(self.transport, '_pub_dest'):
+            full_dest = self.transport._pub_dest
+
         invite = self.identity.generate_invite(
-            self._network_address, port=80, transport=self.transport_type
+            self._network_address, port=80, transport=self.transport_type,
+            full_destination=full_dest
         )
         return self.identity.encode_invite(invite)
     
@@ -150,6 +157,8 @@ class P2PAgent:
             # Inject transport info (protocol.py is transport-agnostic)
             handshake['content']['transport'] = self.transport_type
             handshake['content']['address'] = self._network_address
+            if self.transport_type == 'i2p' and hasattr(self.transport, '_pub_dest'):
+                handshake['content']['full_destination'] = self.transport._pub_dest
             success = self.peers.send_to_peer(peer.address, handshake)
             
             if success:
@@ -321,6 +330,8 @@ class P2PAgent:
                 )
                 response_handshake['content']['transport'] = self.transport_type
                 response_handshake['content']['address'] = self._network_address
+                if self.transport_type == 'i2p' and hasattr(self.transport, '_pub_dest'):
+                    response_handshake['content']['full_destination'] = self.transport._pub_dest
                 success = self.peers.send_to_peer(peer.address, response_handshake)
                 if success:
                     print(f"  ✓ Handshake response sent")

@@ -32,6 +32,22 @@ class TransportManager(ABC):
     def get_address(self) -> Optional[str]:
         """Get the reachable address for this transport."""
 
+    def http_post(self, url: str, json_data: dict, timeout: int = 30) -> tuple:
+        """Send an HTTP POST to a peer via the transport.
+        Returns (status_code, response_body) or raises on failure.
+        Default implementation uses requests + SOCKS proxy."""
+        import requests
+        response = requests.post(url, json=json_data, proxies=self.get_proxy(), timeout=timeout)
+        return response.status_code, response.text
+
+    def http_get(self, url: str, timeout: int = 10) -> tuple:
+        """Send an HTTP GET to a peer via the transport.
+        Returns (status_code, response_body) or raises on failure.
+        Default implementation uses requests + SOCKS proxy."""
+        import requests
+        response = requests.get(url, proxies=self.get_proxy(), timeout=timeout)
+        return response.status_code, response.text
+
     @staticmethod
     @abstractmethod
     def check_daemon(config_dir: str = None) -> dict:

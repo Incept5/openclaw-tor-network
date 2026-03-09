@@ -47,7 +47,9 @@ class Peer:
         public_key_b64: str,
         display_name: str = "Anonymous Agent",
         socks_proxy: dict = None,
-        transport: str = "tor"
+        transport: str = "tor",
+        transport_manager=None,
+        full_destination: str = None
     ):
         self.address = address  # @pubkey.ed25519
         self.onion = onion  # Kept for backwards compat (also stores .b32.i2p)
@@ -56,6 +58,8 @@ class Peer:
         self.public_key_b64 = public_key_b64
         self.display_name = display_name
         self.transport = transport  # 'tor' or 'i2p'
+        self.transport_manager = transport_manager  # Optional TransportManager for SAM-based sends
+        self.full_destination = full_destination  # Full I2P base64 destination (for SAM)
         # Load Curve25519 public key directly (for encryption)
         self.public_key = PublicKey(base64.b64decode(public_key_b64))
         self.socks_proxy = socks_proxy or _default_socks_proxy()
@@ -72,30 +76,36 @@ class Peer:
         return f"http://{self.network_address}:{self.port}{path}"
     
     def send_message(self, encrypted_payload: dict) -> bool:
-        """Send encrypted message to peer"""
+        """Send encrypted message to peer via transport (SAM for I2P, SOCKS for Tor)"""
         try:
             url = self.get_url('/message')
-            response = requests.post(
-                url,
-                json=encrypted_payload,
-                proxies=self.socks_proxy,
-                timeout=30
-            )
-            return response.status_code == 200
+            if self.transport_manager and hasattr(self.transport_manager, 'http_post'):
+                status_code, _ = self.transport_manager.http_post(
+                    url, encrypted_payload, timeout=60,
+                    full_destination=self.full_destination
+                )
+            else:
+                response = requests.post(
+                    url, json=encrypted_payload, proxies=self.socks_proxy, timeout=30
+                )
+                status_code = response.status_code
+            return status_code == 200
         except Exception as e:
             print(f"Failed to send to {self.address}: {e}")
             return False
-    
+
     def health_check(self) -> bool:
-        """Check if peer is reachable"""
+        """Check if peer is reachable via transport"""
         try:
             url = self.get_url('/health')
-            response = requests.get(
-                url,
-                proxies=self.socks_proxy,
-                timeout=10
-            )
-            if response.status_code == 200:
+            if self.transport_manager and hasattr(self.transport_manager, 'http_get'):
+                status_code, _ = self.transport_manager.http_get(
+                    url, timeout=30, full_destination=self.full_destination
+                )
+            else:
+                response = requests.get(url, proxies=self.socks_proxy, timeout=10)
+                status_code = response.status_code
+            if status_code == 200:
                 self.last_seen = time.time()
                 return True
             return False
@@ -106,9 +116,11 @@ class Peer:
 class PeerManager:
     """Manages all peer connections"""
     
-    def __init__(self, identity: Identity, data_dir: str = None, socks_proxy: dict = None):
+    def __init__(self, identity: Identity, data_dir: str = None, socks_proxy: dict = None,
+                 transport_manager=None):
         self.identity = identity
-        
+        self.transport_manager = transport_manager
+
         if data_dir is None:
             data_dir = Path.home() / ".openclaw/p2p"
         self.data_dir = Path(data_dir)
@@ -137,14 +149,16 @@ class PeerManager:
                     public_key_b64=info['public_key'],
                     display_name=info.get('display_name', 'Anonymous Agent'),
                     socks_proxy=self.socks_proxy,
-                    transport=transport
+                    transport=transport,
+                    transport_manager=self.transport_manager,
+                    full_destination=info.get('full_destination')
                 )
     
     def _save_peers(self):
         """Save peers to disk"""
         data = {}
         for addr, peer in self.peers.items():
-            data[addr] = {
+            entry = {
                 'onion': peer.onion,
                 'address': peer.network_address,
                 'port': peer.port,
@@ -153,6 +167,9 @@ class PeerManager:
                 'transport': peer.transport,
                 'last_seen': peer.last_seen
             }
+            if peer.full_destination:
+                entry['full_destination'] = peer.full_destination
+            data[addr] = entry
         with open(self.peers_file, 'w') as f:
             json.dump(data, f, indent=2)
     
@@ -189,7 +206,9 @@ class PeerManager:
             public_key_b64=encryption_pubkey,
             display_name=invite.get('name', 'Anonymous Agent'),
             socks_proxy=self.socks_proxy,
-            transport=transport
+            transport=transport,
+            transport_manager=self.transport_manager,
+            full_destination=invite.get('dest')
         )
         
         self.peers[address] = peer
@@ -250,7 +269,9 @@ class PeerManager:
             public_key_b64=encryption_pubkey_b64,
             display_name=display_name,
             socks_proxy=self.socks_proxy,
-            transport=transport
+            transport=transport,
+            transport_manager=self.transport_manager,
+            full_destination=handshake_data.get('full_destination')
         )
 
         self.peers[address] = peer

@@ -105,7 +105,8 @@ class SAMClient:
         return reader, writer
 
     async def stream_accept(self, session_id: str):
-        """Accept an incoming stream connection. Returns (reader, writer)."""
+        """Accept an incoming stream connection. Returns (reader, writer).
+        Consumes the remote destination line so the stream is ready for raw data."""
         reader, writer = await self._connect()
         await self._hello(reader, writer)
         cmd = f'STREAM ACCEPT ID={session_id} SILENT=false\n'
@@ -115,15 +116,17 @@ class SAMClient:
         if 'RESULT=OK' not in reply:
             writer.close()
             raise SAMError(f'STREAM ACCEPT failed: {reply}')
-        # After RESULT=OK, the next line contains the remote destination
-        # Then the socket becomes a raw data stream
+        # SILENT=false means the next line is the remote destination — consume it
+        # so the stream is clean for HTTP data
+        await reader.readline()
         return reader, writer
 
     async def stream_connect(self, session_id: str, destination: str):
-        """Connect to a remote I2P destination. Returns (reader, writer)."""
+        """Connect to a remote I2P destination. Returns (reader, writer).
+        Uses SILENT=true so no destination prefix is sent on the data stream."""
         reader, writer = await self._connect()
         await self._hello(reader, writer)
-        cmd = f'STREAM CONNECT ID={session_id} DESTINATION={destination} SILENT=false\n'
+        cmd = f'STREAM CONNECT ID={session_id} DESTINATION={destination} SILENT=true\n'
         writer.write(cmd.encode())
         await writer.drain()
         reply = (await reader.readline()).decode().strip()
@@ -430,6 +433,146 @@ class I2PManager(TransportManager):
     # Legacy alias
     def get_socks_proxy(self) -> dict:
         return self.get_proxy()
+
+    def http_post(self, url: str, json_data: dict, timeout: int = 60,
+                  full_destination: str = None) -> tuple:
+        """Send HTTP POST via SAM STREAM CONNECT (bypasses broken SOCKS proxy)."""
+        return self._sam_http_request('POST', url, json_data=json_data, timeout=timeout,
+                                       full_destination=full_destination)
+
+    def http_get(self, url: str, timeout: int = 30,
+                 full_destination: str = None) -> tuple:
+        """Send HTTP GET via SAM STREAM CONNECT (bypasses broken SOCKS proxy)."""
+        return self._sam_http_request('GET', url, timeout=timeout,
+                                       full_destination=full_destination)
+
+    def _sam_http_request(self, method: str, url: str, json_data: dict = None,
+                           timeout: int = 60, full_destination: str = None) -> tuple:
+        """Make an HTTP request over a SAM stream connection.
+        Parses the URL to extract .b32.i2p host, connects via SAM,
+        speaks raw HTTP over the stream."""
+        import re
+        from urllib.parse import urlparse
+
+        parsed = urlparse(url)
+        host = parsed.hostname
+        port = parsed.port or 80
+        path = parsed.path or '/'
+
+        if not host:
+            raise ValueError(f"Missing host in URL: {url}")
+
+        # SAM STREAM CONNECT needs the full base64 destination, not .b32.i2p
+        # Use full_destination if provided, otherwise fall back to host (will fail for b32)
+        sam_destination = full_destination or host
+        if sam_destination.endswith('.b32.i2p') and not full_destination:
+            raise ValueError(
+                f"SAM STREAM CONNECT requires the full I2P destination, not {host}. "
+                "The peer's invite may be missing the destination field. "
+                "Ask them to regenerate their invite."
+            )
+
+        # Build raw HTTP request
+        if method == 'POST' and json_data is not None:
+            import json as _json
+            body = _json.dumps(json_data).encode()
+            request = (
+                f"{method} {path} HTTP/1.1\r\n"
+                f"Host: {host}\r\n"
+                f"Content-Type: application/json\r\n"
+                f"Content-Length: {len(body)}\r\n"
+                f"Connection: close\r\n"
+                f"\r\n"
+            ).encode() + body
+        else:
+            request = (
+                f"{method} {path} HTTP/1.1\r\n"
+                f"Host: {host}\r\n"
+                f"Connection: close\r\n"
+                f"\r\n"
+            ).encode()
+
+        # Use SAM to connect and send
+        sam_port = getattr(self, '_sam_port', self.DEFAULT_SAM_PORT)
+
+        # CLI tools don't have a daemon event loop — use a fresh one-shot session
+        # Daemon has self._loop; CLI tools won't
+        loop = getattr(self, '_loop', None)
+        if loop and not loop.is_closed():
+            # Running inside daemon — use its event loop
+            import concurrent.futures
+            session_name = f"oc-tor-net-{self._pid}"
+            future = asyncio.run_coroutine_threadsafe(
+                self._sam_http_coro(session_name, sam_port, sam_destination, request, timeout),
+                loop
+            )
+            try:
+                return future.result(timeout=timeout + 10)
+            except concurrent.futures.TimeoutError:
+                raise TimeoutError(f"SAM HTTP request to {host} timed out after {timeout}s")
+        else:
+            # CLI tool — create a temporary SAM session for this request
+            return asyncio.run(
+                self._standalone_sam_request(sam_port, sam_destination, request, timeout)
+            )
+
+    async def _standalone_sam_request(self, sam_port: int, destination: str,
+                                      request: bytes, timeout: int) -> tuple:
+        """One-shot SAM request for CLI tools — creates a temporary session."""
+        sam = SAMClient(self.DEFAULT_SAM_HOST, sam_port)
+        # Generate a transient destination for this request
+        _, priv = await sam.generate_destination()
+        session_id = f"oc-cli-{os.getpid()}"
+        sess_reader, sess_writer = await sam.create_session_persistent(
+            session_id, priv, style='STREAM'
+        )
+        try:
+            return await self._sam_http_coro(session_id, sam_port, destination, request, timeout)
+        finally:
+            try:
+                sess_writer.close()
+            except:
+                pass
+
+    async def _sam_http_coro(self, session_name: str, sam_port: int,
+                              destination: str, request: bytes,
+                              timeout: int) -> tuple:
+        """Async coroutine: connect via SAM, send HTTP, read response."""
+        sam = SAMClient(self.DEFAULT_SAM_HOST, sam_port)
+        reader = writer = None
+        try:
+            async with asyncio.timeout(timeout):
+                reader, writer = await sam.stream_connect(session_name, destination)
+                writer.write(request)
+                await writer.drain()
+
+                # Read full response
+                response_data = b''
+                while True:
+                    chunk = await reader.read(4096)
+                    if not chunk:
+                        break
+                    response_data += chunk
+
+                # Parse HTTP response
+                response_text = response_data.decode('utf-8', errors='replace')
+                # Extract status code from first line
+                first_line = response_text.split('\r\n', 1)[0]
+                parts = first_line.split(' ', 2)
+                status_code = int(parts[1]) if len(parts) >= 2 else 0
+
+                # Extract body (after \r\n\r\n)
+                body = ''
+                if '\r\n\r\n' in response_text:
+                    body = response_text.split('\r\n\r\n', 1)[1]
+
+                return status_code, body
+        finally:
+            if writer:
+                try:
+                    writer.close()
+                except:
+                    pass
 
     def _write_daemon_config(self, socks_port: int, sam_port: int):
         """Write daemon.json so CLI tools can discover config."""

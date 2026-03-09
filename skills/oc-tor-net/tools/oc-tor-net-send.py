@@ -68,24 +68,34 @@ def main(peer_address: str, message_text: str):
 
     peer_info = peers_data[peer_address]
 
-    # Use SOCKS port from daemon config
+    # Get transport manager for proper send routing (SAM for I2P, SOCKS for Tor)
+    daemon_transport = daemon_status.get('transport', 'tor')
+    transport_mgr = TransportFactory.create(daemon_transport, service_port=daemon_status.get('service_port', 8765))
+    # For CLI tools, we don't start the transport — just use its http methods
+    # For I2P, we need the running daemon's event loop, so we connect to SAM fresh
+    if daemon_transport == 'i2p':
+        transport_mgr._sam_port = daemon_status.get('sam_port', 7656)
+        transport_mgr._pid = daemon_status.get('pid', os.getpid())
+
     socks_port = daemon_status.get('socks_port', 9060)
     socks_proxy = {
         'http': f'socks5h://127.0.0.1:{socks_port}',
         'https': f'socks5h://127.0.0.1:{socks_port}'
     }
 
-    transport = peer_info.get('transport', daemon_status.get('transport', 'tor'))
+    transport = peer_info.get('transport', daemon_transport)
     network_addr = peer_info.get('address', peer_info.get('onion', ''))
 
-    # Create peer object
+    # Create peer object with transport manager for SAM-based sends
     peer = Peer(
         address=peer_address,
         onion=network_addr,
         port=peer_info['port'],
         public_key_b64=peer_info['public_key'],
         socks_proxy=socks_proxy,
-        transport=transport
+        transport=transport,
+        transport_manager=transport_mgr if transport == 'i2p' else None,
+        full_destination=peer_info.get('full_destination')
     )
 
     print(f"Sending to: {peer_address}")
