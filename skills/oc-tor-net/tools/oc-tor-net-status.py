@@ -84,7 +84,12 @@ def main():
     # Handle --invite flag
     if '--invite' in sys.argv:
         if network_address:
-            invite = identity.generate_invite(network_address, port=80, transport=transport)
+            # Include full I2P destination for SAM routing
+            full_dest = daemon_status.get('destination') if transport == 'i2p' else None
+            invite = identity.generate_invite(
+                network_address, port=80, transport=transport,
+                full_destination=full_dest
+            )
             invite_code = identity.encode_invite(invite)
             print(invite_code)
         else:
@@ -146,7 +151,11 @@ def main():
     if network_address:
         print("Your invite code (share this to let others connect):")
         print()
-        invite = identity.generate_invite(network_address, port=80, transport=transport)
+        full_dest = daemon_status.get('destination') if transport == 'i2p' else None
+        invite = identity.generate_invite(
+            network_address, port=80, transport=transport,
+            full_destination=full_dest
+        )
         invite_code = identity.encode_invite(invite)
         print(f"  {invite_code}")
         print()

@@ -583,7 +583,7 @@ class I2PManager(TransportManager):
             'sam_port': sam_port,
             'service_port': self.service_port,
             'address': self._address,
-            'destination': self._pub_dest[:80] + '...' if self._pub_dest else None,
+            'destination': self._pub_dest,
             'pid': self._pid,
             'data_dir': str(self.data_dir)
         }
