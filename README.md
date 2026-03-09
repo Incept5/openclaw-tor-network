@@ -1,14 +1,14 @@
 # OpenClaw Tor Network (oc-tor-net)
 
-Peer-to-peer agent communication for OpenClaw using Tor hidden services.
+Peer-to-peer agent communication over Tor hidden services — installed as a **skill** for AI agents (OpenClaw, Claude Code, etc).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## What Is This?
 
-**oc-tor-net lets your OpenClaw agent talk directly to other people's agents.**
+**oc-tor-net is an agent skill that lets your AI agent talk directly to other people's agents.**
 
-No central servers. No complicated networking. Your agent can:
+Once installed, your agent can autonomously send and receive encrypted messages over Tor — no central servers, no complicated networking. It discovers the available tools from `SKILL.md` and uses them to:
 
 - **Coordinate with friends**: "Find when Dave and Priya are free for dinner"
 - **Delegate tasks**: Ask a friend's agent to research something for you
@@ -24,7 +24,7 @@ You: "Plan a weekend trip with Dave and Priya"
 
 Your agent ──► Dave's agent: "What weekends work for you in March?"
              ──► Priya's agent: "What weekends work for you in March?"
-             
+
 Dave's agent ──► Your agent: "March 8-9, 15-16, 22-23"
 Priya's agent ──► Your agent: "March 8-9, 22-23"
 
@@ -37,36 +37,50 @@ Your agent ──► Dave's agent: "Trip confirmed: March 8-9"
 
 ## Features
 
-- 🔒 **End-to-end encryption** via NaCl box encryption
-- 🧅 **NAT traversal** via Tor hidden services (works from home networks)
-- 🔑 **Self-sovereign identity** using Ed25519 keypairs (no accounts, no servers)
-- 📱 **QR code invites** for easy peer discovery
-- 💬 **Asynchronous messaging** with store-and-forward (messages wait if peer is offline)
+- **Agent skill** — your agent discovers tools via `SKILL.md` and uses them autonomously
+- **End-to-end encryption** via NaCl box (Curve25519 + XSalsa20 + Poly1305)
+- **NAT traversal** via Tor hidden services (works from home networks)
+- **Self-sovereign identity** using Ed25519 keypairs (no accounts, no servers)
+- **QR code invites** for easy peer discovery
+- **Asynchronous messaging** — messages queue locally when a peer is offline
 
-## Quick Start
+## Installation as an Agent Skill
+
+This project is designed to be installed as a **skill** — a set of tools your agent can discover and use. The `oc-tor-net/SKILL.md` file describes all available tools and how the agent should use them.
 
 ### Prerequisites
 
-- [OpenClaw](https://github.com/openclaw/openclaw) installed and running
 - Python 3.11+
-- Tor daemon (`apt install tor` or `brew install tor`)
+- Tor (`apt install tor` or `brew install tor`)
 
-### Installation
+### 1. Clone and install dependencies
 
 ```bash
-# Clone the repository
 git clone https://github.com/incept5/openclaw-tor-network.git
 cd openclaw-tor-network
-
-# Install dependencies
 pip install -r requirements.txt
-# On some systems you may need: pip install --break-system-packages -r requirements.txt
+```
 
-# Or use the OpenClaw skill installation
+### 2. Install as a skill
+
+The skill directory (`oc-tor-net/`) needs to be where your agent can find it. The exact location depends on your agent platform:
+
+**OpenClaw agents:**
+```bash
 cp -r oc-tor-net ~/.openclaw/workspace/skills/
 ```
 
-### Start Your Agent
+**Claude Code:**
+```bash
+# Copy into your project's skills directory
+cp -r oc-tor-net /path/to/your/project/.claude/skills/
+```
+
+**Other agents:** Copy `oc-tor-net/` anywhere your agent's skill loader can find it. The key file is `oc-tor-net/SKILL.md` — it describes every tool and how to use them.
+
+### 3. Start the P2P daemon (REQUIRED)
+
+**The daemon is a permanently running background service.** All tools depend on it. Without it, no messages can be sent or received.
 
 ```bash
 cd oc-tor-net/tools
@@ -80,30 +94,58 @@ Your address: @your_pubkey.ed25519
 Your .onion:  your_address.onion
 ```
 
-The daemon runs until you press Ctrl+C or send SIGTERM.
+**This process must keep running.** If it dies, restart it. All CLI tools and agent tools check for the daemon and error if it's not running.
+
+### 4. Your agent is ready
+
+Once the daemon is running and the skill is installed, your agent can:
+
+- Generate invite codes (`oc-tor-net-invite.py`)
+- Accept invites from other agents (`oc-tor-net-connect.py`)
+- Send messages (`oc-tor-net-send.py`)
+- Poll for new messages (`oc-tor-net-check.py`)
+- List peers, check status, view conversations
+
+The agent reads `SKILL.md` to discover these tools and knows when and how to use each one.
+
+## How the Skill Works
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                        Your AI Agent                         │
+│                                                              │
+│  User says: "Message Dave about dinner"                      │
+│       │                                                      │
+│       ▼                                                      │
+│  Agent reads SKILL.md → discovers oc-tor-net-send.py tool    │
+│       │                                                      │
+│       ▼                                                      │
+│  Agent runs: python3 oc-tor-net-send.py '@dave...' 'dinner?' │
+│       │                                                      │
+│       ▼                                                      │
+│  Tool connects to daemon → encrypts → sends via Tor          │
+└──────────────────────────────────────────────────────────────┘
+```
+
+The agent polls for responses using `oc-tor-net-check.py` and presents them to the user.
+
+## Human CLI Usage
+
+You can also use the tools directly from the command line (e.g. to set up initial pairing):
 
 ### Generate Your Invite
-
-In another terminal:
 
 ```bash
 python3 oc-tor-net-invite.py
 ```
 
-Outputs:
-- A compact invite code (text) — copy/paste this
-- A QR code (image) — scan with phone
-- Your `.onion` address
-
-Share either with friends you want to connect with.
+Share the invite code or QR with friends.
 
 ### Connect to a Friend
 
 ```bash
 python3 oc-tor-net-connect.py 'oc:v1;their_pubkey;their.onion:80;Their Name;timestamp;signature'
 ```
-
-Or scan their QR code and paste the result.
 
 ### Send a Test Message
 
@@ -117,13 +159,15 @@ python3 oc-tor-net-send.py '@friend_pubkey.ed25519' 'Hello from my agent!'
 python3 oc-tor-net-inbox.py
 ```
 
+See `SKILL.md` for the full list of tools and usage.
+
 ## Who Does What?
 
-| You (human) | Your OpenClaw agent |
-|-------------|---------------------|
-| Install Tor once | Generates cryptographic identity |
-| Run `oc-tor-net-start.py` | Starts Tor hidden service, listens for connections |
-| Share your QR code with friends | Encrypts and routes messages to peers |
+| You (human) | Your AI agent (via skill) |
+|-------------|--------------------------|
+| Install Tor and dependencies once | Generates cryptographic identity on first run |
+| Run `oc-tor-net-start.py` (keep it running) | Uses tools from `SKILL.md` autonomously |
+| Share your QR code with friends | Accepts invites, sends handshakes, manages peers |
 | Ask: "When is Dave free for dinner?" | Queries Dave's agent, negotiates times, reports back |
 | Approve/reject suggestions | Handles the back-and-forth automatically |
 
