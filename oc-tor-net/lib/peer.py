@@ -129,7 +129,17 @@ class PeerManager:
                 )
     
     def _save_peers(self):
-        """Save peers to disk"""
+        """Save peers to disk, merging with any peers added by CLI tools."""
+        # Read existing on-disk data to preserve peers added externally
+        on_disk = {}
+        if self.peers_file.exists():
+            try:
+                with open(self.peers_file) as f:
+                    on_disk = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                pass
+
+        # Build in-memory data
         data = {}
         for addr, peer in self.peers.items():
             data[addr] = {
@@ -139,8 +149,26 @@ class PeerManager:
                 'display_name': peer.display_name,
                 'last_seen': peer.last_seen
             }
+
+        # Merge: disk-only entries preserved, in-memory takes priority
+        merged = {**on_disk, **data}
         with open(self.peers_file, 'w') as f:
-            json.dump(data, f, indent=2)
+            json.dump(merged, f, indent=2)
+
+        # Load any disk-only peers into memory so daemon can interact with them
+        for addr, info in on_disk.items():
+            if addr not in self.peers:
+                try:
+                    self.peers[addr] = Peer(
+                        address=addr,
+                        onion=info['onion'],
+                        port=info['port'],
+                        public_key_b64=info['public_key'],
+                        display_name=info.get('display_name', 'Anonymous Agent'),
+                        socks_proxy=self.socks_proxy
+                    )
+                except Exception:
+                    pass
     
     def add_peer(self, invite_code: str) -> Optional[Peer]:
         """Add a peer from an invite code"""
@@ -182,8 +210,29 @@ class PeerManager:
         return peer
     
     def get_peer(self, address: str) -> Optional[Peer]:
-        """Get a peer by address"""
-        return self.peers.get(address)
+        """Get a peer by address, reloading from disk if not in memory."""
+        if address in self.peers:
+            return self.peers[address]
+        # Peer may have been added by a CLI tool — check disk
+        if self.peers_file.exists():
+            try:
+                with open(self.peers_file) as f:
+                    data = json.load(f)
+                if address in data:
+                    info = data[address]
+                    peer = Peer(
+                        address=address,
+                        onion=info['onion'],
+                        port=info['port'],
+                        public_key_b64=info['public_key'],
+                        display_name=info.get('display_name', 'Anonymous Agent'),
+                        socks_proxy=self.socks_proxy
+                    )
+                    self.peers[address] = peer
+                    return peer
+            except (json.JSONDecodeError, OSError, KeyError):
+                pass
+        return None
 
     def add_peer_from_handshake(self, handshake_data: dict, sender_pubkey_b64: str) -> Peer:
         """Add a peer from a handshake message (auto-add on first contact)"""
